@@ -1,0 +1,15 @@
+#!/bin/sh
+
+printf "Enter /dev/sdx for LFS drive: "
+read DEVICE
+
+printf "Continue with ${DEVICE}? (Y/n): "
+read CONTINUE
+
+# Exit if the string isn't empty, y, or Y.
+[ ! -z $CONTINUE ] || [ ! $CONTINUE = "y" ] || [ ! $CONTINUE = "Y" ] && exit
+
+printf "Mounting ${DEVICE}4 to $LFS\n"
+sudo mount ${DEVICE}4 $LFS
+printf "Mounting ${DEVICE}2 to $LFS/boot\n"
+sudo mount ${DEVICE}2 $LFS/boot

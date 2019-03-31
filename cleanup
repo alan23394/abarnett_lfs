@@ -1,0 +1,6 @@
+#!/bin/sh
+
+printf "Unmounting $LFS/boot\n"
+sudo umount $LFS/boot
+printf "Unmounting $LFS\n"
+sudo umount $LFS
