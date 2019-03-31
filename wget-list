@@ -65,8 +65,6 @@ http://ftp.gnu.org/gnu/readline/readline-8.0.tar.gz
 http://ftp.gnu.org/gnu/sed/sed-4.7.tar.xz
 https://github.com/shadow-maint/shadow/releases/download/4.6/shadow-4.6.tar.xz
 http://www.infodrom.org/projects/sysklogd/download/sysklogd-1.5.1.tar.gz
-https://github.com/systemd/systemd/archive/v240/systemd-240.tar.gz
-http://anduin.linuxfromscratch.org/LFS/systemd-man-pages-240.tar.xz
 http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.93.tar.xz
 http://ftp.gnu.org/gnu/tar/tar-1.31.tar.xz
 https://downloads.sourceforge.net/tcl/tcl8.6.9-src.tar.gz
@@ -83,4 +81,3 @@ http://www.linuxfromscratch.org/patches/lfs/8.4/coreutils-8.30-i18n-1.patch
 http://www.linuxfromscratch.org/patches/lfs/8.4/glibc-2.29-fhs-1.patch
 http://www.linuxfromscratch.org/patches/lfs/8.4/kbd-2.0.4-backspace-1.patch
 http://www.linuxfromscratch.org/patches/lfs/8.4/sysvinit-2.93-consolidated-1.patch
-http://www.linuxfromscratch.org/patches/lfs/8.4/systemd-240-security_fixes-2.patch
