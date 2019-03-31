@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Downloading!
+wget --input-file=wget-list --continue --directory-prefix=$LFS/sources
+
+# Checksums!
+cp md5sums $LFS/sources
+# Silence annoying (confusing) output
+pushd $LFS/sources > /dev/null
+md5sum -c md5sums
+# Silence annoying (confusing) output
+popd > /dev/null
