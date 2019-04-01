@@ -1,7 +1,7 @@
 #
 # ~/.bashrc for lfs
 # Alan Barnett
-# March 2019
+# April 2019
 #
 
 # If not running interactively, don't do anything
@@ -34,12 +34,6 @@ export BROWSER=iceweasel
 
 HISTCONTROL=ignoreboth:erasedups
 HISTIGNORE="history:ls:pwd:fg:bg:clear:exit"
-
-# For my gcc alias
-CFLAGS='-Wall -Wextra -Werror'
-
-# Make with two cores
-export MAKEFLAGS='-j 2'
 
 # }}}
 
@@ -76,7 +70,6 @@ alias ls='ls --color=auto'			# Add colors
 alias grep='grep --color=auto'		# Add colors
 alias cp='cp -iv'					# Ask before overwriting, show copied files
 alias mv='mv -iv'					# Ask before overwriting, show moved files
-alias gcc='gcc $CFLAGS'				# CFLAGS defined at the top, in Variables
 
 # shortcut aliases (save typing)
 alias la='ls -a'					# -A to ignore . and .. folders
