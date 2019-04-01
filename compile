@@ -134,7 +134,7 @@ esac
 # Go into build folder to compile
 mkdir -v build && pushd build
 
-printf "(%3/%3) Compiling gcc..." $CUR_TASK $NUM_TASKS
+printf "(%3d/%3) Compiling gcc..." $CUR_TASK $NUM_TASKS
 
 ../configure										\
 	--target=$LFS_TGT								\
@@ -279,7 +279,7 @@ printf "done!\n"; ((++CUR_TASK))
 # Binutils wants to be made in a build folder
 mkdir -v binutils-2.32/build && pushd binutils-2.32/build
 
-printf "(%3/%3) Compiling binutils again..." $CUR_TASK $NUM_TASKS
+printf "(%3d/%3) Compiling binutils again..." $CUR_TASK $NUM_TASKS
 
 CC=$LFS_TGT-gcc					\
 AR=$LFS_TGT-ar					\
@@ -364,7 +364,7 @@ esac
 
 mkdir -v build && pushd build
 
-printf "(%3/%3) Compiling gcc again (part 2!!)..." $CUR_TASK $NUM_TASKS
+printf "(%3d/%3) Compiling gcc again (part 2!!)..." $CUR_TASK $NUM_TASKS
 
 CC=$LFS_TGT-gcc										\
 CXX=$LFS_TGT-g++									\
