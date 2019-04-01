@@ -183,7 +183,7 @@ printf "done!\n"; ((++CUR_TASK))
 
 pushd linux-4.20.12
 printf "(%3d/%3d) Installing Linux Headers..." $CUR_TASK $NUM_TASKS
-make $MAKEFLAGS mrproper					>> "$LOG_DIR/linux_headers.log"
+make mrproper								>> "$LOG_DIR/linux_headers.log"
 make INSTALL_HDR_PATH=dest headers_install	>> "$LOG_DIR/linux_headers.log"
 cp -rv dest/include/* /tools/include		>> "$LOG_DIR/linux_headers.log"
 printf "done!\n"; ((++CUR_TASK))
@@ -193,6 +193,7 @@ printf "(%3d/%3d) Cleaning Linux Headers..." $CUR_TASK $NUM_TASKS
 rm -rf linux-4.20.12
 printf "done!\n"; ((++CUR_TASK))
 # }}}
+exit
 
 # 12 tasks
 
