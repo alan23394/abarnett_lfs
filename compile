@@ -41,271 +41,271 @@ pushd $LFS/sources
 # Package configuration goes below this line
 # **************************************************************************** #
 
-# Binutils Pass 1 {{{
-printf "(%3d/%3d) Extracting binutils..." $CUR_TASK $NUM_TASKS
-tar -xf binutils-2.32.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-# Binutils wants to be made in a build folder
-mkdir -v binutils-2.32/build && pushd binutils-2.32/build
-
-printf "(%3d/%3d) Compiling binutils..." $CUR_TASK $NUM_TASKS
-
-../configure					\
-	--prefix=/tools				\
-	--with-sysroot=$LFS			\
-	--with-libpath=/tools/lib	\
-	--target=$LFS_TGT			\
-	--disable-nls				\
-	--disable-werror			>> "$LOG_DIR/binutils_pass1.log"
-
-make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass1.log"
-
-# I copied this from the bible, but I'm really not sure why it needs to be
-# a switch. looks like maybe for the addition of more later?
-# Anyway, it makes a symbolic link to set up the library folder into /tools
-case $(uname -m) in
-	x86_64) mkdir -v /tools/lib && ln -sv /lib /tools/lib64 ;;
-esac
-
-make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass1.log"
-
-printf "done!\n"; ((++CUR_TASK))
-
-# Leave binutils folder, back to sources
-popd
-
-printf "(%3d/%3d) Cleaning binutils..." $CUR_TASK $NUM_TASKS
-rm -rf binutils-2.32
-printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# 3 tasks
-
-# GCC Pass 1 {{{
-printf "(%3d/%3d) Extracting GCC..." $CUR_TASK $NUM_TASKS
-tar -xf gcc-8.2.0.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-# pushd into gcc folder so I can extract other things into here
-pushd gcc-8.2.0
-
-printf "(%3d/%3d) Extracting mpfr..." $CUR_TASK $NUM_TASKS
-tar -xf ../mpfr-4.0.2.tar.xz
-mv mpfr-4.0.2 mpfr
-printf "done!\n"; ((++CUR_TASK))
-
-printf "(%3d/%3d) Extracting gmp..." $CUR_TASK $NUM_TASKS
-tar -xf ../gmp-6.1.2.tar.xz
-mv gmp-6.1.2 gmp
-printf "done!\n"; ((++CUR_TASK))
-
-printf "(%3d/%3d) Extracting mpc..." $CUR_TASK  $NUM_TASKS
-tar -xf ../mpc-1.1.0.tar.gz
-mv mpc-1.1.0 mpc
-printf "done!\n"; ((++CUR_TASK))
-
-# The following command will change the location of GCC's default dynamic
-# linker to use the one installed in /tools. It also removes /usr/include
-# from GCC's include search path.
-# http://www.linuxfromscratch.org/lfs/view/stable/chapter05/gcc-pass1.html
-for file in gcc/config/{linux,i386/linux{,64}}.h
-do
-	cp -uv $file{,.orig}
-	sed -e 's@/lib\(64\)\?\(32\)\?/ld@/tools&@g' \
-		-e 's@/usr@/tools@g' $file.orig > $file
-	echo '
-#undef STANDARD_STARTFILE_PREFIX_1
-#undef STANDARD_STARTFILE_PREFIX_2
-#define STANDARD_STARTFILE_PREFIX_1 "/tools/lib/"
-#define STANDARD_STARTFILE_PREFIX_2 ""' >> $file
-	touch $file.orig
-done
-
-# I assume this will assist with cross compilation later. I'm not sure why I
-# would do this like this yet.
-case $(uname -m) in
-	x86_64)
-		sed -e '/m64=/s/lib64/lib/' \
-			-i.orig gcc/config/i386/t-linux64
-		;;
-esac
-
-# Go into build folder to compile
-mkdir -v build && pushd build
-
-printf "(%3d/%3) Compiling gcc..." $CUR_TASK $NUM_TASKS
-
-../configure										\
-	--target=$LFS_TGT								\
-	--prefix=/tools									\
-	--with-glibc-version=2.11						\
-	--with-sysroot=$LFS								\
-	--with-newlib									\
-	--without-headers								\
-	--with-local-prefix=/tools						\
-	--with-native-system-header-dir=/tools/include	\
-	--disable-nls									\
-	--disable-shared								\
-	--disable-multilib								\
-	--disable-decimal-float							\
-	--disable-threads								\
-	--disable-libatomic								\
-	--disable-libgomp								\
-	--disable-libmpx								\
-	--disable-libquadmath							\
-	--disable-libssp								\
-	--disable-libvtv								\
-	--disable-libstdcxx								\
-	--enable-languages=c,c++						>> "$LOG_DIR/gcc_pass1.log"
-make $MAKEFLAGS										>> "$LOG_DIR/gcc_pass1.log"
-make $MAKEFLAGS install								>> "$LOG_DIR/gcc_pass1.log"
-
-printf "done!\n"; ((++CUR_TASK))
-
-# Back out of build
-popd
-
-# Back out of GCC
-popd
-
-printf "(%3d/%3d) Cleaning gcc..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
-printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# 9 tasks
-
-# Linux API Headers {{{
-printf "(%3d/%3d) Extracting Linux Headers..." $CUR_TASK $NUM_TASKS
-tar -xf linux-4.20.12.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-pushd linux-4.20.12
-printf "(%3d/%3d) Installing Linux Headers..." $CUR_TASK $NUM_TASKS
-make $MAKEFLAGS mrproper					>> "$LOG_DIR/linux_headers.log"
-make INSTALL_HDR_PATH=dest headers_install	>> "$LOG_DIR/linux_headers.log"
-cp -rv dest/include/* /tools/include		>> "$LOG_DIR/linux_headers.log"
-printf "done!\n"; ((++CUR_TASK))
-popd
-
-printf "(%3d/%3d) Cleaning Linux Headers..." $CUR_TASK $NUM_TASKS
-rm -rf linux-4.20.12
-printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# 12 tasks
-
-# Glibc {{{
-printf "(%3d/%3d) Extracting Glibc..." $CUR_TASK $NUM_TASKS
-tar -xf glibc-2.29.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-mkdir -v glibc-2.29/build && pushd glibc-2.29/build
-
-printf "(%3d/%3d) Compiling Glibc..." $CUR_TASK $NUM_TASKS
-../configure							\
-	--prefix=/tools						\
-	--host=$LFS_TGT						\
-	--build=$(../scripts/config.guess)	\
-	--enable-kernel=3.2					\
-	--with-headers=/tools/include		>> "$LOG_DIR/glibc.log"
-make $MAKEFLAGS							>> "$LOG_DIR/glibc.log"
-make $MAKEFLAGS install					>> "$LOG_DIR/glibc.log"
-printf "done!\n"; ((++CUR_TASK))
-
-# Leave glibc/build, back to sources
-popd
-
-# Test Glibc {{{
-printf "Test that gcc is working...\n"
-echo 'int main(){}' > dummy.c
-$LFS_TGT-gcc dummy.c
-readelf -l a.out | grep --color=auto ': /tools'
-printf "Does the above line say \"Requesting program interpreter\"? (Y/n): "
-read CONTINUE
-if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
-	echo "Moving along then"
-else
-	echo "Alright, figure it out. Quitting (without deleting dummy.c or a.out)..."
-	exit
-fi
-rm -v dummy.c a.out
-# }}}
-
-printf "(%3d/%3d) Cleaning Glibc..." $CUR_TASK $NUM_TASKS
-rm -rf glibc-2.29
-printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# 15 tasks
-
-# Libstdc++ from GCC {{{
-printf "(%3d/%3d) Extracting GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
-tar -xf gcc-8.2.0.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-mkdir -v gcc-8.2.0/build &&  pushd gcc-8.2.0/build
-
-printf "(%3d/%3d) Compiling libstdc++..." $CUR_TASK $NUM_TASKS
-../libstdc++-v3/configure		\
-	--host=$LFS_TGT				\
-	--prefix=/tools				\
-	--disable-multilib			\
-	--disable-nls				\
-	--disable-libstdcxx-threads	\
-	--disable-libstdcxx-pch		\
-	--with-gxx-include-dir=/tools/$LFS_TGT/include/c++/8.2.0 \
-								>> "$LOG_DIR/libstdc++.log"
-make $MAKEFLAGS					>> "$LOG_DIR/libstdc++.log"
-make $MAKEFLAGS install			>> "$LOG_DIR/libstdc++.log"
-printf "done!\n"; ((++CUR_TASK))
-
-# Leave gcc/build, return to sources
-popd
-
-printf "(%3d/%3d) Cleaning GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
-printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# 18 tasks
-
-# Binutils pass 2 {{{
-printf "(%3d/%3d) Extracting binutils again..." $CUR_TASK $NUM_TASKS
-tar -xf binutils-2.32.tar.xz
-printf "done!\n"; ((++CUR_TASK))
-
-# Binutils wants to be made in a build folder
-mkdir -v binutils-2.32/build && pushd binutils-2.32/build
-
-printf "(%3d/%3) Compiling binutils again..." $CUR_TASK $NUM_TASKS
-
-CC=$LFS_TGT-gcc					\
-AR=$LFS_TGT-ar					\
-RANLIB=$LFS_TGT-ranlib			\
-../configure					\
-	--prefix=/tools				\
-	--disable-nls				\
-	--disable-werror			\
-	--with-lib-path=/tools/lib	\
-	--with-sysroot				>> "$LOG_DIR/binutils_pass2.log"
-make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass2.log"
-make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass2.log"
-
-# Not sure what these are for yet
-make -C ld clean
-make -C ld LIB_PATH=/usr/lib:/lib
-
-printf "done!\n"; ((++CUR_TASK))
-
-# Leave binutils folder, back to sources
-popd
-
-printf "(%3d/%3d) Cleaning binutils again..." $CUR_TASK $NUM_TASKS
-rm -rf binutils-2.32
-printf "done!\n"; ((++CUR_TASK))
-# }}}
+## Binutils Pass 1 {{{
+#printf "(%3d/%3d) Extracting binutils..." $CUR_TASK $NUM_TASKS
+#tar -xf binutils-2.32.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Binutils wants to be made in a build folder
+#mkdir -v binutils-2.32/build && pushd binutils-2.32/build
+#
+#printf "(%3d/%3d) Compiling binutils..." $CUR_TASK $NUM_TASKS
+#
+#../configure					\
+#	--prefix=/tools				\
+#	--with-sysroot=$LFS			\
+#	--with-libpath=/tools/lib	\
+#	--target=$LFS_TGT			\
+#	--disable-nls				\
+#	--disable-werror			>> "$LOG_DIR/binutils_pass1.log"
+#
+#make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass1.log"
+#
+## I copied this from the bible, but I'm really not sure why it needs to be
+## a switch. looks like maybe for the addition of more later?
+## Anyway, it makes a symbolic link to set up the library folder into /tools
+#case $(uname -m) in
+#	x86_64) mkdir -v /tools/lib && ln -sv /lib /tools/lib64 ;;
+#esac
+#
+#make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass1.log"
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Leave binutils folder, back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning binutils..." $CUR_TASK $NUM_TASKS
+#rm -rf binutils-2.32
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 3 tasks
+#
+## GCC Pass 1 {{{
+#printf "(%3d/%3d) Extracting GCC..." $CUR_TASK $NUM_TASKS
+#tar -xf gcc-8.2.0.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+## pushd into gcc folder so I can extract other things into here
+#pushd gcc-8.2.0
+#
+#printf "(%3d/%3d) Extracting mpfr..." $CUR_TASK $NUM_TASKS
+#tar -xf ../mpfr-4.0.2.tar.xz
+#mv mpfr-4.0.2 mpfr
+#printf "done!\n"; ((++CUR_TASK))
+#
+#printf "(%3d/%3d) Extracting gmp..." $CUR_TASK $NUM_TASKS
+#tar -xf ../gmp-6.1.2.tar.xz
+#mv gmp-6.1.2 gmp
+#printf "done!\n"; ((++CUR_TASK))
+#
+#printf "(%3d/%3d) Extracting mpc..." $CUR_TASK  $NUM_TASKS
+#tar -xf ../mpc-1.1.0.tar.gz
+#mv mpc-1.1.0 mpc
+#printf "done!\n"; ((++CUR_TASK))
+#
+## The following command will change the location of GCC's default dynamic
+## linker to use the one installed in /tools. It also removes /usr/include
+## from GCC's include search path.
+## http://www.linuxfromscratch.org/lfs/view/stable/chapter05/gcc-pass1.html
+#for file in gcc/config/{linux,i386/linux{,64}}.h
+#do
+#	cp -uv $file{,.orig}
+#	sed -e 's@/lib\(64\)\?\(32\)\?/ld@/tools&@g' \
+#		-e 's@/usr@/tools@g' $file.orig > $file
+#	echo '
+##undef STANDARD_STARTFILE_PREFIX_1
+##undef STANDARD_STARTFILE_PREFIX_2
+##define STANDARD_STARTFILE_PREFIX_1 "/tools/lib/"
+##define STANDARD_STARTFILE_PREFIX_2 ""' >> $file
+#	touch $file.orig
+#done
+#
+## I assume this will assist with cross compilation later. I'm not sure why I
+## would do this like this yet.
+#case $(uname -m) in
+#	x86_64)
+#		sed -e '/m64=/s/lib64/lib/' \
+#			-i.orig gcc/config/i386/t-linux64
+#		;;
+#esac
+#
+## Go into build folder to compile
+#mkdir -v build && pushd build
+#
+#printf "(%3d/%3d) Compiling gcc..." $CUR_TASK $NUM_TASKS
+#
+#../configure										\
+#	--target=$LFS_TGT								\
+#	--prefix=/tools									\
+#	--with-glibc-version=2.11						\
+#	--with-sysroot=$LFS								\
+#	--with-newlib									\
+#	--without-headers								\
+#	--with-local-prefix=/tools						\
+#	--with-native-system-header-dir=/tools/include	\
+#	--disable-nls									\
+#	--disable-shared								\
+#	--disable-multilib								\
+#	--disable-decimal-float							\
+#	--disable-threads								\
+#	--disable-libatomic								\
+#	--disable-libgomp								\
+#	--disable-libmpx								\
+#	--disable-libquadmath							\
+#	--disable-libssp								\
+#	--disable-libvtv								\
+#	--disable-libstdcxx								\
+#	--enable-languages=c,c++						>> "$LOG_DIR/gcc_pass1.log"
+#make $MAKEFLAGS										>> "$LOG_DIR/gcc_pass1.log"
+#make $MAKEFLAGS install								>> "$LOG_DIR/gcc_pass1.log"
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back out of build
+#popd
+#
+## Back out of GCC
+#popd
+#
+#printf "(%3d/%3d) Cleaning gcc..." $CUR_TASK $NUM_TASKS
+#rm -rf gcc-8.2.0
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 9 tasks
+#
+## Linux API Headers {{{
+#printf "(%3d/%3d) Extracting Linux Headers..." $CUR_TASK $NUM_TASKS
+#tar -xf linux-4.20.12.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd linux-4.20.12
+#printf "(%3d/%3d) Installing Linux Headers..." $CUR_TASK $NUM_TASKS
+#make $MAKEFLAGS mrproper					>> "$LOG_DIR/linux_headers.log"
+#make INSTALL_HDR_PATH=dest headers_install	>> "$LOG_DIR/linux_headers.log"
+#cp -rv dest/include/* /tools/include		>> "$LOG_DIR/linux_headers.log"
+#printf "done!\n"; ((++CUR_TASK))
+#popd
+#
+#printf "(%3d/%3d) Cleaning Linux Headers..." $CUR_TASK $NUM_TASKS
+#rm -rf linux-4.20.12
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 12 tasks
+#
+## Glibc {{{
+#printf "(%3d/%3d) Extracting Glibc..." $CUR_TASK $NUM_TASKS
+#tar -xf glibc-2.29.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#mkdir -v glibc-2.29/build && pushd glibc-2.29/build
+#
+#printf "(%3d/%3d) Compiling Glibc..." $CUR_TASK $NUM_TASKS
+#../configure							\
+#	--prefix=/tools						\
+#	--host=$LFS_TGT						\
+#	--build=$(../scripts/config.guess)	\
+#	--enable-kernel=3.2					\
+#	--with-headers=/tools/include		>> "$LOG_DIR/glibc.log"
+#make $MAKEFLAGS							>> "$LOG_DIR/glibc.log"
+#make $MAKEFLAGS install					>> "$LOG_DIR/glibc.log"
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Leave glibc/build, back to sources
+#popd
+#
+## Test Glibc {{{
+#printf "Test that gcc is working...\n"
+#echo 'int main(){}' > dummy.c
+#$LFS_TGT-gcc dummy.c
+#readelf -l a.out | grep --color=auto ': /tools'
+#printf "Does the above line say \"Requesting program interpreter\"? (Y/n): "
+#read CONTINUE
+#if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+#	echo "Moving along then"
+#else
+#	echo "Alright, figure it out. Quitting (without deleting dummy.c or a.out)..."
+#	exit
+#fi
+#rm -v dummy.c a.out
+## }}}
+#
+#printf "(%3d/%3d) Cleaning Glibc..." $CUR_TASK $NUM_TASKS
+#rm -rf glibc-2.29
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 15 tasks
+#
+## Libstdc++ from GCC {{{
+#printf "(%3d/%3d) Extracting GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
+#tar -xf gcc-8.2.0.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#mkdir -v gcc-8.2.0/build &&  pushd gcc-8.2.0/build
+#
+#printf "(%3d/%3d) Compiling libstdc++..." $CUR_TASK $NUM_TASKS
+#../libstdc++-v3/configure		\
+#	--host=$LFS_TGT				\
+#	--prefix=/tools				\
+#	--disable-multilib			\
+#	--disable-nls				\
+#	--disable-libstdcxx-threads	\
+#	--disable-libstdcxx-pch		\
+#	--with-gxx-include-dir=/tools/$LFS_TGT/include/c++/8.2.0 \
+#								>> "$LOG_DIR/libstdc++.log"
+#make $MAKEFLAGS					>> "$LOG_DIR/libstdc++.log"
+#make $MAKEFLAGS install			>> "$LOG_DIR/libstdc++.log"
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Leave gcc/build, return to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
+#rm -rf gcc-8.2.0
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 18 tasks
+#
+## Binutils pass 2 {{{
+#printf "(%3d/%3d) Extracting binutils again..." $CUR_TASK $NUM_TASKS
+#tar -xf binutils-2.32.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Binutils wants to be made in a build folder
+#mkdir -v binutils-2.32/build && pushd binutils-2.32/build
+#
+#printf "(%3d/%3d) Compiling binutils again..." $CUR_TASK $NUM_TASKS
+#
+#CC=$LFS_TGT-gcc					\
+#AR=$LFS_TGT-ar					\
+#RANLIB=$LFS_TGT-ranlib			\
+#../configure					\
+#	--prefix=/tools				\
+#	--disable-nls				\
+#	--disable-werror			\
+#	--with-lib-path=/tools/lib	\
+#	--with-sysroot				>> "$LOG_DIR/binutils_pass2.log"
+#make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass2.log"
+#make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass2.log"
+#
+## Not sure what these are for yet
+#make -C ld clean
+#make -C ld LIB_PATH=/usr/lib:/lib
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Leave binutils folder, back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning binutils again..." $CUR_TASK $NUM_TASKS
+#rm -rf binutils-2.32
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
 
 # 21 tasks
 
@@ -364,7 +364,7 @@ esac
 
 mkdir -v build && pushd build
 
-printf "(%3d/%3) Compiling gcc again (part 2!!)..." $CUR_TASK $NUM_TASKS
+printf "(%3d/%3d) Compiling gcc again (part 2!!)..." $CUR_TASK $NUM_TASKS
 
 CC=$LFS_TGT-gcc										\
 CXX=$LFS_TGT-g++									\
@@ -394,7 +394,7 @@ popd
 popd
 
 printf "(%3d/%3d) Cleaning gcc again..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
+#rm -rf gcc-8.2.0
 printf "done!\n"; ((++CUR_TASK))
 
 # Test GCC {{{
