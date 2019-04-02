@@ -31,7 +31,7 @@ MAKEFLAGS='-j2'
 # Current task, for printing status
 CUR_TASK=1
 # Number of tasks, for printing status
-NUM_TASKS=27
+NUM_TASKS=38
 
 # Change directory with pushd (partnered with a popd at the end)
 # Each package needs to start compiling from the sources folder
@@ -414,34 +414,141 @@ pushd $LFS/sources
 #printf "done!\n"; ((++CUR_TASK))
 #
 ## }}}
-
-# 27 tasks
-
-# TCL {{{
-printf "(%3d/%3d) Extracting TCL..." $CUR_TASK $NUM_TASKS
-tar -xf tcl8.6.9-src.tar.gz
+#
+## 27 tasks
+#
+## TCL {{{
+#printf "(%3d/%3d) Extracting TCL..." $CUR_TASK $NUM_TASKS
+#tar -xf tcl8.6.9-src.tar.gz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd tcl8.6.9/unix
+#printf "(%3d/%3d) Compiling TCL..." $CUR_TASK $NUM_TASKS
+#./configure --prefix=/tools				>> "$LOG_DIR/tcl.log"
+#make $MAKEFLAGS							>> "$LOG_DIR/tcl.log"
+#make $MAKEFLAGS install					>> "$LOG_DIR/tcl.log"
+#chmod -v u+w /tools/lib/libtcl8.6.so
+#make $MAKEFLAGS install-private-headers	>> "$LOG_DIR/tcl.log"
+#ln -sv tclsh8.6 /tools/bin/tclsh
+#printf "done!\n"; ((++CUR_TASK))
+#popd
+#
+#printf "(%3d/%3d) Cleaning TCL..." $CUR_TASK $NUM_TASKS
+#rm -rf tcl8.6.9
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 29 tasks
+#
+## Expect {{{
+#printf "(%3d/%3d) Extracting expect..." $CUR_TASK $NUM_TASKS
+#tar -xf expect5.45.4.tar.gz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd expect5.45.4
+#printf "(%3d/%3d) Compiling expect..." $CUR_TASK $NUM_TASKS
+#
+#cp -v configure{,.orig}
+#sed 's:/usr/local/bin:/bin:' configure.orig > configure
+#
+#./configure					\
+#	--prefix=/tools			\
+#	--with-tcl=/tools/lib	\
+#	--with-tclinclude=/tools/include	>> "$LOG_DIR/expect.log"
+#make $MAKEFLAGS							>> "$LOG_DIR/expect.log"
+#make $MAKEFLAGS SCRIPTS="" install		>> "$LOG_DIR/expect.log"
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning expect..." $CUR_TASK $NUM_TASKS
+#rm -rf expect5.45.4
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 32 tasks
+#
+## DejaGNU {{{
+#printf "(%3d/%3d) Extracting DejaGNU..." $CUR_TASK $NUM_TASKS
+#tar -xf dejagnu-1.6.2.tar.gz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd dejagnu-1.6.2
+#printf "(%3d/%3d) Compiling DejaGNU..." $CUR_TASK $NUM_TASKS
+#
+#./configure --prefix=/tools		>> "$LOG_DIR/DejaGNU.log"
+#make $MAKEFLAGS install			>> "$LOG_DIR/DejaGNU.log"
+#
+## Test what we've done
+#make check						>> "$LOG_DIR/DejaGNU.log"
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning DejaGNU..." $CUR_TASK $NUM_TASKS
+#rm -rf dejagnu-1.6.2
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 35 tasks
+#
+# m4 {{{
+printf "(%3d/%3d) Extracting m4..." $CUR_TASK $NUM_TASKS
+tar -xf m4-1.4.18.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd tcl8.6.9/unix
-printf "(%3d/%3d) Compiling TCL..." $CUR_TASK $NUM_TASKS
-./configure --prefix=/tools				>> "$LOG_DIR/tcl.log"
-make $MAKEFLAGS							>> "$LOG_DIR/tcl.log"
-make $MAKEFLAGS install					>> "$LOG_DIR/tcl.log"
-chmod -v u+w /tools/lib/libtcl8.6.so
-make $MAKEFLAGS install-private-headers	>> "$LOG_DIR/tcl.log"
-ln -sv tclsh8.6 /tools/bin/tclsh
+pushd m4-1.4.18
+printf "(%3d/%3d) Compiling ..." $CUR_TASK $NUM_TASKS
+
+# Make some fixes required by glibc-2.28
+sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' lib/*.c
+echo "#define _IO_IN_BACKUP 0x100" >> lib/stdio-impl.h
+
+./configure --prefix=/tools		>> "$LOG_DIR/m4.log"
+make $MAKEFLAGS					>> "$LOG_DIR/m4.log"
+make $MAKEFLAGS install			>> "$LOG_DIR/m4.log"
+
 printf "done!\n"; ((++CUR_TASK))
+
+# Back to sources
 popd
 
-printf "(%3d/%3d) Cleaning TCL..." $CUR_TASK $NUM_TASKS
-rm -rf tcl8.6.9
+printf "(%3d/%3d) Cleaning m4..." $CUR_TASK $NUM_TASKS
+rm -rf m4-1.4.18
 printf "done!\n"; ((++CUR_TASK))
 # }}}
+
+# 38 tasks
 
 # Return to previous working directory, discard the output
 popd > /dev/null
 
 exit
+
+# Dummy {{{
+printf "(%3d/%3d) Extracting TARGET..." $CUR_TASK $NUM_TASKS
+tar -xf 
+printf "done!\n"; ((++CUR_TASK))
+
+pushd 
+printf "(%3d/%3d) Compiling TARGET..." $CUR_TASK $NUM_TASKS
+
+./configure --prefix=/tools				>> "$LOG_DIR/TARGET.log"
+make $MAKEFLAGS							>> "$LOG_DIR/TARGET.log"
+make $MAKEFLAGS install					>> "$LOG_DIR/TARGET.log"
+
+printf "done!\n"; ((++CUR_TASK))
+
+# Back to sources
+popd
+
+printf "(%3d/%3d) Cleaning TARGET..." $CUR_TASK $NUM_TASKS
+rm -rf 
+printf "done!\n"; ((++CUR_TASK))
+# }}}
 
 # Packages {{{
 Python-3.7.2.tar.xz
@@ -459,13 +566,11 @@ check-0.12.0.tar.gz
 coreutils-8.30-i18n-1.patch
 coreutils-8.30.tar.xz
 dbus-1.12.12.tar.gz
-dejagnu-1.6.2.tar.gz
 diffutils-3.7.tar.xz
 e2fsprogs-1.44.5.tar.gz
 elfutils-0.176.tar.bz2
 eudev-3.2.7.tar.gz
 expat-2.2.6.tar.bz2
-expect5.45.4.tar.gz
 file-5.36.tar.gz
 findutils-4.6.0.tar.gz
 flex-2.6.4.tar.gz
@@ -491,7 +596,6 @@ libcap-2.26.tar.xz
 libffi-3.2.1.tar.gz
 libpipeline-1.5.1.tar.gz
 libtool-2.4.6.tar.xz
-m4-1.4.18.tar.xz
 make-4.2.1.tar.bz2
 man-db-2.8.5.tar.xz
 man-pages-4.16.tar.xz
