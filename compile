@@ -554,35 +554,57 @@ pushd $LFS/sources
 #
 ## 41 tasks
 #
-# Bash {{{
-printf "(%3d/%3d) Extracting bash..." $CUR_TASK $NUM_TASKS
-tar -xf bash-5.0.tar.gz
+## Bash {{{
+#printf "(%3d/%3d) Extracting bash..." $CUR_TASK $NUM_TASKS
+#tar -xf bash-5.0.tar.gz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd bash-5.0
+#printf "(%3d/%3d) Compiling bash..." $CUR_TASK $NUM_TASKS
+#
+#./configure					\
+#	--prefix=/tools			\
+#	--without-bash-malloc	>> "$LOG_DIR/bash.log"
+#make $MAKEFLAGS				>> "$LOG_DIR/bash.log"
+#make $MAKEFLAGS install		>> "$LOG_DIR/bash.log"
+#
+## Symlink sh to bash. Yuck.
+## When I'm not so rigidly following the book, this will most certainly be dash.
+#ln -sv bash /tools/bin/sh
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning bash..." $CUR_TASK $NUM_TASKS
+#rm -rf bash-5.0
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 44 tasks
+#
+# Bison {{{
+printf "(%3d/%3d) Extracting bison..." $CUR_TASK $NUM_TASKS
+tar -xf bison-3.3.2.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd bash-5.0
-printf "(%3d/%3d) Compiling bash..." $CUR_TASK $NUM_TASKS
+pushd bison-3.3.2
+printf "(%3d/%3d) Compiling bison..." $CUR_TASK $NUM_TASKS
 
-./configure					\
-	--prefix=/tools			\
-	--without-bash-malloc	>> "$LOG_DIR/bash.log"
-make $MAKEFLAGS				>> "$LOG_DIR/bash.log"
-make $MAKEFLAGS install		>> "$LOG_DIR/bash.log"
-
-# Symlink sh to bash. Yuck.
-# When I'm not so rigidly following the book, this will most certainly be dash.
-ln -sv bash /tools/bin/sh
+./configure --prefix=/tools		>> "$LOG_DIR/bison.log"
+make $MAKEFLAGS			   		>> "$LOG_DIR/bison.log"
+make $MAKEFLAGS install	   		>> "$LOG_DIR/bison.log"
 
 printf "done!\n"; ((++CUR_TASK))
 
 # Back to sources
 popd
 
-printf "(%3d/%3d) Cleaning bash..." $CUR_TASK $NUM_TASKS
-rm -rf bash-5.0
+printf "(%3d/%3d) Cleaning bison..." $CUR_TASK $NUM_TASKS
+rm -rf bison-3.3.2
 printf "done!\n"; ((++CUR_TASK))
 # }}}
-
-# 44 tasks
 
 # Return to previous working directory, discard the output
 popd > /dev/null
@@ -619,7 +641,6 @@ attr-2.4.48.tar.gz
 autoconf-2.69.tar.xz
 automake-1.16.1.tar.xz
 bc-1.07.1.tar.gz
-bison-3.3.2.tar.xz
 bzip2-1.0.6-install_docs-1.patch
 bzip2-1.0.6.tar.gz
 check-0.12.0.tar.gz
