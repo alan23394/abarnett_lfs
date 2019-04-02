@@ -30,7 +30,6 @@ export PATH=$LFS_PATH:$SYS_PATH:$HOME_PATH
 
 # Normal variables
 export EDITOR=nvim
-export BROWSER=iceweasel
 
 HISTCONTROL=ignoreboth:erasedups
 HISTIGNORE="history:ls:pwd:fg:bg:clear:exit"
