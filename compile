@@ -63,9 +63,9 @@ make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass1.log"
 
 # I copied this from the bible, but I'm really not sure why it needs to be
 # a switch. looks like maybe for the addition of more later?
-# Anyway, it makes a symbolic link to set up the library folder into /tools
+# Anyway, it creates the lib folder and symlinks lib64 to it in /tools
 case $(uname -m) in
-	x86_64) mkdir -v /tools/lib && ln -sv /lib /tools/lib64 ;;
+	x86_64) mkdir -v /tools/lib && ln -sv lib /tools/lib64 ;;
 esac
 
 make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass1.log"
