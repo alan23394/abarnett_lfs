@@ -15,7 +15,7 @@
 #                                                                              #
 # **************************************************************************** #
 
-# Log file for all output
+# Log directory for all output
 LOG_DIR=$LFS/sources/logs
 
 # Make the log directory if it doesn't exist
@@ -25,16 +25,15 @@ if [ ! -d "$LOG_DIR" ]; then
 fi
 
 # Flags for make
-# -j 2 uses two cores when compiling
-MAKEFLAGS='-j 2'
+# -j2 uses two cores when compiling
+MAKEFLAGS='-j2'
 
 # Current task, for printing status
 CUR_TASK=1
 # Number of tasks, for printing status
 NUM_TASKS=27
 
-# Change directory with pushd
-# This is so we can popd at the end to get back in the initial directory
+# Change directory with pushd (partnered with a popd at the end)
 # Each package needs to start compiling from the sources folder
 pushd $LFS/sources
 
@@ -193,7 +192,6 @@ printf "(%3d/%3d) Cleaning Linux Headers..." $CUR_TASK $NUM_TASKS
 rm -rf linux-4.20.12
 printf "done!\n"; ((++CUR_TASK))
 # }}}
-exit
 
 # 12 tasks
 
@@ -294,7 +292,7 @@ RANLIB=$LFS_TGT-ranlib			\
 make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass2.log"
 make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass2.log"
 
-# Not sure what these are for yet
+# Prepares the linker for readjusting later
 make -C ld clean
 make -C ld LIB_PATH=/usr/lib:/lib
 cp -v ld/ld-new /tools/bin
@@ -395,10 +393,6 @@ popd
 # Back out of GCC
 popd
 
-printf "(%3d/%3d) Cleaning gcc again..." $CUR_TASK $NUM_TASKS
-#rm -rf gcc-8.2.0
-printf "done!\n"; ((++CUR_TASK))
-
 # Test GCC {{{
 printf "Test that gcc is working...\n"
 echo 'int main(){}' > dummy.c
@@ -414,6 +408,10 @@ else
 fi
 rm dummy.c a.out
 # }}}
+
+printf "(%3d/%3d) Cleaning gcc again..." $CUR_TASK $NUM_TASKS
+rm -rf gcc-8.2.0
+printf "done!\n"; ((++CUR_TASK))
 
 # }}}
 
