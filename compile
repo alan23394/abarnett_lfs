@@ -31,7 +31,7 @@ MAKEFLAGS='-j2'
 # Current task, for printing status
 CUR_TASK=1
 # Number of tasks, for printing status
-NUM_TASKS=38
+NUM_TASKS=44
 
 # Change directory with pushd (partnered with a popd at the end)
 # Each package needs to start compiling from the sources folder
@@ -495,33 +495,94 @@ pushd $LFS/sources
 #
 ## 35 tasks
 #
-# m4 {{{
-printf "(%3d/%3d) Extracting m4..." $CUR_TASK $NUM_TASKS
-tar -xf m4-1.4.18.tar.xz
+## m4 {{{
+#printf "(%3d/%3d) Extracting m4..." $CUR_TASK $NUM_TASKS
+#tar -xf m4-1.4.18.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd m4-1.4.18
+#printf "(%3d/%3d) Compiling ..." $CUR_TASK $NUM_TASKS
+#
+## Make some fixes required by glibc-2.28
+#sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' lib/*.c
+#echo "#define _IO_IN_BACKUP 0x100" >> lib/stdio-impl.h
+#
+#./configure --prefix=/tools		>> "$LOG_DIR/m4.log"
+#make $MAKEFLAGS					>> "$LOG_DIR/m4.log"
+#make $MAKEFLAGS install			>> "$LOG_DIR/m4.log"
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning m4..." $CUR_TASK $NUM_TASKS
+#rm -rf m4-1.4.18
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 38 tasks
+#
+## Ncurses {{{
+#printf "(%3d/%3d) Extracting ncurses..." $CUR_TASK $NUM_TASKS
+#tar -xf ncurses-6.1.tar.gz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd ncurses-6.1
+#printf "(%3d/%3d) Compiling ncurses..." $CUR_TASK $NUM_TASKS
+#
+#./configure					\
+#	--prefix=/tools			\
+#	--with-shared			\
+#	--without-debug			\
+#	--without-ada			\
+#	--enable-widec			\
+#	--enable-overwrite		>> "$LOG_DIR/ncurses.log"
+#make $MAKEFLAGS				>> "$LOG_DIR/ncurses.log"
+#make $MAKEFLAGS install		>> "$LOG_DIR/ncurses.log"
+#ln -sv libncursesw.so /tools/lib/libncurses.so
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning ncurses..." $CUR_TASK $NUM_TASKS
+#rm -rf ncurses-6.1
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 41 tasks
+#
+# Bash {{{
+printf "(%3d/%3d) Extracting bash..." $CUR_TASK $NUM_TASKS
+tar -xf bash-5.0.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd m4-1.4.18
-printf "(%3d/%3d) Compiling ..." $CUR_TASK $NUM_TASKS
+pushd bash-5.0
+printf "(%3d/%3d) Compiling bash..." $CUR_TASK $NUM_TASKS
 
-# Make some fixes required by glibc-2.28
-sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' lib/*.c
-echo "#define _IO_IN_BACKUP 0x100" >> lib/stdio-impl.h
+./configure					\
+	--prefix=/tools			\
+	--without-bash-malloc	>> "$LOG_DIR/bash.log"
+make $MAKEFLAGS				>> "$LOG_DIR/bash.log"
+make $MAKEFLAGS install		>> "$LOG_DIR/bash.log"
 
-./configure --prefix=/tools		>> "$LOG_DIR/m4.log"
-make $MAKEFLAGS					>> "$LOG_DIR/m4.log"
-make $MAKEFLAGS install			>> "$LOG_DIR/m4.log"
+# Symlink sh to bash. Yuck.
+# When I'm not so rigidly following the book, this will most certainly be dash.
+ln -sv bash /tools/bin/sh
 
 printf "done!\n"; ((++CUR_TASK))
 
 # Back to sources
 popd
 
-printf "(%3d/%3d) Cleaning m4..." $CUR_TASK $NUM_TASKS
-rm -rf m4-1.4.18
+printf "(%3d/%3d) Cleaning bash..." $CUR_TASK $NUM_TASKS
+rm -rf bash-5.0
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
-# 38 tasks
+# 44 tasks
 
 # Return to previous working directory, discard the output
 popd > /dev/null
@@ -557,7 +618,6 @@ acl-2.2.53.tar.gz
 attr-2.4.48.tar.gz
 autoconf-2.69.tar.xz
 automake-1.16.1.tar.xz
-bash-5.0.tar.gz
 bc-1.07.1.tar.gz
 bison-3.3.2.tar.xz
 bzip2-1.0.6-install_docs-1.patch
@@ -601,7 +661,6 @@ man-db-2.8.5.tar.xz
 man-pages-4.16.tar.xz
 md5sums
 meson-0.49.2.tar.gz
-ncurses-6.1.tar.gz
 ninja-1.9.0.tar.gz
 openssl-1.1.1a.tar.gz
 patch-2.7.6.tar.xz
