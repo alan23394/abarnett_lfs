@@ -584,32 +584,83 @@ pushd $LFS/sources
 #
 ## 44 tasks
 #
-# Bison {{{
-printf "(%3d/%3d) Extracting bison..." $CUR_TASK $NUM_TASKS
-tar -xf bison-3.3.2.tar.xz
+## Bison {{{
+#printf "(%3d/%3d) Extracting bison..." $CUR_TASK $NUM_TASKS
+#tar -xf bison-3.3.2.tar.xz
+#printf "done!\n"; ((++CUR_TASK))
+#
+#pushd bison-3.3.2
+#printf "(%3d/%3d) Compiling bison..." $CUR_TASK $NUM_TASKS
+#
+#./configure --prefix=/tools		>> "$LOG_DIR/bison.log"
+#make $MAKEFLAGS			   		>> "$LOG_DIR/bison.log"
+#make $MAKEFLAGS install	   		>> "$LOG_DIR/bison.log"
+#
+#printf "done!\n"; ((++CUR_TASK))
+#
+## Back to sources
+#popd
+#
+#printf "(%3d/%3d) Cleaning bison..." $CUR_TASK $NUM_TASKS
+#rm -rf bison-3.3.2
+#printf "done!\n"; ((++CUR_TASK))
+## }}}
+#
+## 47 tasks
+#
+# Bzip2 {{{
+printf "(%3d/%3d) Extracting bzip2..." $CUR_TASK $NUM_TASKS
+tar -xf bzip2-1.0.6.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd bison-3.3.2
-printf "(%3d/%3d) Compiling bison..." $CUR_TASK $NUM_TASKS
+pushd bzip2-1.0.6
+printf "(%3d/%3d) Compiling bzip2..." $CUR_TASK $NUM_TASKS
 
-./configure --prefix=/tools		>> "$LOG_DIR/bison.log"
-make $MAKEFLAGS			   		>> "$LOG_DIR/bison.log"
-make $MAKEFLAGS install	   		>> "$LOG_DIR/bison.log"
+make $MAKEFLAGS							>> "$LOG_DIR/bzip2.log"
+make $MAKEFLAGS PREFIX=/tools install	>> "$LOG_DIR/bzip2.log"
 
 printf "done!\n"; ((++CUR_TASK))
 
 # Back to sources
 popd
 
-printf "(%3d/%3d) Cleaning bison..." $CUR_TASK $NUM_TASKS
-rm -rf bison-3.3.2
+printf "(%3d/%3d) Cleaning bzip2..." $CUR_TASK $NUM_TASKS
+rm -rf bzip2-1.0.6
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
-# Return to previous working directory, discard the output
-popd > /dev/null
+# 50 tasks
 
-exit
+# Coreutils {{{
+printf "(%3d/%3d) Extracting coreutils..." $CUR_TASK $NUM_TASKS
+tar -xf coreutils-8.30.tar.xz
+printf "done!\n"; ((++CUR_TASK))
+
+pushd coreutils-8.30
+printf "(%3d/%3d) Compiling coreutils..." $CUR_TASK $NUM_TASKS
+
+./configure								\
+	--prefix=/tools						\
+	--enable-install-program=hostname	>> "$LOG_DIR/coreutils.log"
+make $MAKEFLAGS							>> "$LOG_DIR/coreutils.log"
+make $MAKEFLAGS install					>> "$LOG_DIR/coreutils.log"
+
+printf "done!\n"; ((++CUR_TASK))
+
+# Back to sources
+popd
+
+printf "(%3d/%3d) Cleaning coreutils..." $CUR_TASK $NUM_TASKS
+rm -rf coreutils-8.30
+printf "done!\n"; ((++CUR_TASK))
+# }}}
+
+# 53 tasks
+
+# Return to previous working direcory
+popd
+
+exit # Below here lie notes, and a list of package tarballs for easy copying
 
 # Dummy {{{
 printf "(%3d/%3d) Extracting TARGET..." $CUR_TASK $NUM_TASKS
@@ -642,10 +693,8 @@ autoconf-2.69.tar.xz
 automake-1.16.1.tar.xz
 bc-1.07.1.tar.gz
 bzip2-1.0.6-install_docs-1.patch
-bzip2-1.0.6.tar.gz
 check-0.12.0.tar.gz
 coreutils-8.30-i18n-1.patch
-coreutils-8.30.tar.xz
 dbus-1.12.12.tar.gz
 diffutils-3.7.tar.xz
 e2fsprogs-1.44.5.tar.gz
