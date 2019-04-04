@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# I'm not sure where to integrate this yet, as I don't have one over-arching
+# script, so for now it gets it's own file.
+
+# These commands remove unneeded debugging symbols
+strip --strip-debug /tools/lib/*
+/usr/bin/strip --strip-unneeded /tools/{,s}bin/*lib/*
+
+# This command removes documentation
+rm -rf /tools/{,share}/{info,man,doc}
+
+# This command removes "unneeded files"
+find /tools/lib{,exec} -name "*.la" -delete
