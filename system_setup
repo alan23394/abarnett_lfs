@@ -18,7 +18,8 @@ if [ "$(whoami)" != "root" ]; then
 	exit
 fi
 
-LFS=/home/lfs/lfs/mnt
+# source config file for LFS variable
+source ./config
 
 # Make directories for virtual kernel filesystems
 mkdir -pv $LFS/{dev,proc,sys,run}
