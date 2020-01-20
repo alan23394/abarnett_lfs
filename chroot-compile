@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    chroot-compile                                     :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/04/10 06:09:47 by marvin            #+#    #+#              #
+#    Updated: 2019/04/10 06:09:47 by marvin           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+# This function will execute all parameters after $2 as a command, and it logs
+# all output of those commands into the LOG_FILE, which is made up of LOG_DIR,
+# PKG_NAME, and a datetime string.
+
+# Directory where packages are stored/compiled by default
+BUILD_DIR="/sources"
+
+# Directory where package compilation output goes
+# Each package gets it's own folder, and in that folder are the log files
+LOG_DIR="/sources/log"
+
+# Takes at least 3 arguments
+# $1: name of package
+# $2: tarball filename
+# $3 and on: config/make/install commands
+
+pretty_make()
+{
+	# Save the positional parameters (which will be changed)
+	PKG_NAME="$1"
+	TARBALL="$2"
+
+	# Shift positional parameters by 2, to leave only commands
+	shift 2
+
+	# Quit if no tarball
+	[ ! -f "$BUILD_DIR/$TARBALL" ] && echo "No tarball $TARBALL" && exit
+
+	# Date for the log file
+	DATE="$(date +'%y%m%d-%H%M')"
+	# Creating log folder if it doesn't exist
+	mkdir -p "$LOG_DIR/$PKG_NAME"
+	# Setting log file with package name and date
+	LOG_FILE="$LOG_DIR/$PKG_NAME/$DATE.log"
+
+	printf "Extracting $PKG_NAME..."
+	mkdir "$BUILD_DIR/build"
+	if tar -xf "$BUILD_DIR/$TARBALL" \
+			-C "$BUILD_DIR/build" \
+			--strip-components=1 \
+			>> "$LOG_FILE" 2>&1
+		printf "Extraction failed!\n"
+		exit
+	fi
+	printf "done!\n"
+
+	printf  "Configuring/making/installing $PKG_NAME..."
+	while [ -n "$1" ]; do
+		if "$1" >> "$LOG_FILE" 2>&1
+			printf "failure! Check log file $LOG_FILE"
+			break
+		fi
+		shift
+	done
+	printf "done!\n"
+
+	printf "Cleaning $PKG_NAME..."
+	rm -r $BUILD_DIR/build
+	printf "done!\n"
+}
