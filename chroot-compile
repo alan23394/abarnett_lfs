@@ -12,33 +12,42 @@
 #                                                                              #
 # **************************************************************************** #
 
-# This function will execute all parameters after $2 as a command, and it logs
-# all output of those commands into the LOG_FILE, which is made up of LOG_DIR,
-# PKG_NAME, and a datetime string.
+# This function takes five parameters:
+#	the name of the package
+#	the filename of the tarball
+#   a function to config/make/make install
+# It will extract the archive into a build directory, and make a log file for
+# the package name. Then it executes the build function. It prints info about
+# the current stage. It will remove the build directory after running the
+# function, so be sure to include the make install part.
+# It logs all output from the stages in a log file located in the LOG_DIR
+# directory.
 
 # Directory where packages are stored/compiled by default
-BUILD_DIR="/sources"
+SOURCE_DIR="/sources"
+
+# Directory where builds will take place
+BUILD_DIR="$SOURCE_DIR/build"
 
 # Directory where package compilation output goes
 # Each package gets it's own folder, and in that folder are the log files
 LOG_DIR="/sources/log"
 
-# Takes at least 3 arguments
-# $1: name of package
-# $2: tarball filename
-# $3 and on: config/make/install commands
+# Makeflags. Use this variable in your function with make and make install, so
+# that way you can control all the variables from here.
+MAKEFLAGS='-j2'
 
 pretty_make()
 {
-	# Save the positional parameters (which will be changed)
+	# Label the positional parameters
 	PKG_NAME="$1"
-	TARBALL="$2"
-
-	# Shift positional parameters by 2, to leave only commands
-	shift 2
+	TARBALL="$SOURCE_DIR/$2"
+	BUILD="$3"
 
 	# Quit if no tarball
-	[ ! -f "$BUILD_DIR/$TARBALL" ] && echo "No tarball $TARBALL" && exit
+	[ ! -f "$TARBALL" ] && printf "No tarball $TARBALL\n" && exit
+	# Quit if build directory exists already
+	[ -d "$BUILD_DIR" ] && printf "Build dir $BUILD_DIR exists! Clean it first.\n" && exit
 
 	# Date for the log file
 	DATE="$(date +'%y%m%d-%H%M')"
@@ -48,27 +57,31 @@ pretty_make()
 	LOG_FILE="$LOG_DIR/$PKG_NAME/$DATE.log"
 
 	printf "Extracting $PKG_NAME..."
-	mkdir "$BUILD_DIR/build"
-	if tar -xf "$BUILD_DIR/$TARBALL" \
-			-C "$BUILD_DIR/build" \
+	mkdir "$BUILD_DIR"
+	if ! tar -xvf "$TARBALL" \
+			-C "$BUILD_DIR" \
 			--strip-components=1 \
-			>> "$LOG_FILE" 2>&1
-		printf "Extraction failed!\n"
+			>> "$LOG_FILE" 2>&1; then
+		printf "Extraction failed! Could not extract $TARBALL\n"
 		exit
 	fi
 	printf "done!\n"
 
+	# cd into build directory
+	pushd "$BUILD_DIR" > /dev/null
+
 	printf  "Configuring/making/installing $PKG_NAME..."
-	while [ -n "$1" ]; do
-		if "$1" >> "$LOG_FILE" 2>&1
-			printf "failure! Check log file $LOG_FILE"
-			break
-		fi
-		shift
-	done
+	if ! "$BUILD" >> "$LOG_FILE" 2>&1; then
+		printf "Failure! Check log file $LOG_FILE for details\n"
+		printf "Not cleaning $BUILD_DIR.\n"
+		exit
+	fi
 	printf "done!\n"
 
+	# Leave build directory
+	popd > /dev/null
+
 	printf "Cleaning $PKG_NAME..."
-	rm -r $BUILD_DIR/build
+	rm -vr "$BUILD_DIR" >> "$LOG_FILE"
 	printf "done!\n"
 }
