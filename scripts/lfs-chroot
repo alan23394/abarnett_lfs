@@ -12,13 +12,16 @@
 #                                                                              #
 # **************************************************************************** #
 
-source ./config
+# This should contain the LFS variable
+source resources/config
+
+[ -z "$LFS" ] && echo "Must export \$LFS as the location to chroot into" && exit
 
 chroot "$LFS" /tools/bin/env -i	\
 	HOME=/root					\
 	TERM="$TERM"				\
 	PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin	\
-	PS1="\[\e[1;31m\](lfs chroot) \[\e[1;36m\]\u\[\e[1;37m\]:\[\e[1;32m\]\w\n\[\e[1;37m\] \$ \[\e[m\]"	\
+	PS1="\[\e[1;36m\]\u\[\e[1;37m\]:\[\e[1;32m\]\w \[\e[1;31m\](lfs chroot)\n\[\e[1;37m\] \$ \[\e[m\]"	\
 	/tools/bin/bash --login +h
 
 # The +h turns off bash hashing functions, so it doesn't save the locations of

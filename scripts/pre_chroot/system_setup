@@ -19,7 +19,7 @@ if [ "$(whoami)" != "root" ]; then
 fi
 
 # source config file for LFS variable
-source ./config
+source resources/config
 
 # Make directories for virtual kernel filesystems
 mkdir -pv $LFS/{dev,proc,sys,run}
