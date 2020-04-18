@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    linux_compile                                      :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2019/04/10 07:28:38 by marvin            #+#    #+#              #
+#    Updated: 2019/04/10 07:28:38 by marvin           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+source ./chroot-compile
+
+# Linux API headers {{{
+
+make_linux_headers()
+{
+	# Clear up old dependencies
+	make mrproper
+	# Make the headers and install them
+	make headers
+	find usr/include -name ".*" -delete
+	rm usr/include/Makefile
+	cp -rv usr/include/* /usr/include
+}
+
+pretty_make					\
+	"linux-headers"			\
+	"linux-4.20.12.tar.xz"	\
+	"make_linux_headers"
+
+# }}}
