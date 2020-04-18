@@ -1,18 +1,20 @@
 #!/bin/sh
 
+[ -z "$LFS" ] && printf "Export \$LFS variable!\n" && exit
+
 # Make sources folder
 if [ ! -d $LFS/sources ]; then
 	mkdir -v $LFS/sources
-	# Give everyone writable permissions, but also add the sticky bit so only the
-	# owner can delete things
+	# Give everyone writable permissions, but also add the sticky bit so only
+	# the owner can delete things
 	chmod -v a+wt $LFS/sources
 fi
 
 # Downloading!
-wget --input-file=wget-list --continue --directory-prefix=$LFS/sources
+wget --input-file=resources/wget-list --continue --directory-prefix=$LFS/sources
 
 # Checksums!
-cp md5sums $LFS/sources
+cp resources/md5sums $LFS/sources
 # Silence annoying (confusing) output
 pushd $LFS/sources > /dev/null
 md5sum -c md5sums
