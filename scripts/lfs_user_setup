@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    lfs_user_setup                                     :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: lfs <alanbarnett328@gmail.com>             +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2020/04/19 09:48:45 by lfs               #+#    #+#              #
+#    Updated: 2020/04/19 09:48:45 by lfs              ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+# This script will automate these things (if they aren't already done):
+#   creating an unpriveleged lfs user, with files from user_skel/lfs
+#   setting the password interactively
+#   creating an lfs group (for access to root-owned folders)
+#   changing ownership of some $LFS folders to the new user
+
+# Make sure we're running as root
+source resources/root_check
+# Grab LFS variable
+source resources/config
+
+# Create the lfs group
+grep -w '^lfs' /etc/group > /dev/null || \
+	groupadd lfs
+
+# Create new lfs user
+#  useradd options:
+#   -s
+#     default shell
+#   -g
+#     login group
+#   -m
+#     create user's home directory
+#   -k
+#     skel directory for files to be copied in
+#   username
+grep -w '^lfs' /etc/passwd > /dev/null || \
+(
+	useradd -s /bin/bash -g lfs -m -k resources/user_skel/lfs lfs
+
+	# Set the password for the new lfs user. You'll have to type this one.
+	printf "Enter the lfs user's "
+	passwd lfs
+)
+
+# Change permissions in the $LFS directory to allow access for the lfs user
+chown -v lfs $LFS/tools
+chown -v lfs $LFS/sources
+
+printf "You should log into your new lfs user now, if you aren't already.\n"
+printf "Switch with 'su - lfs' to ensure that a login shell is used.\n"
