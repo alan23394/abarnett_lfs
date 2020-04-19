@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    root_check                                         :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: lfs <alanbarnett328@gmail.com>             +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2020/04/19 09:25:02 by lfs               #+#    #+#              #
+#    Updated: 2020/04/19 09:25:02 by lfs              ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+# Check if the script is being ran as root, otherwise print an error and exit.
+# Useful if sourced from another script.
+
+[ "$(whoami)" != "root" ] \
+	&& printf "Must be running as root!\n" >&2 \
+	&& exit 1
