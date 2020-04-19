@@ -16,7 +16,6 @@
 
 # Make sure we're running as root
 source resources/root_check
-
 # Get LFS variable if we don't have it
 source resources/config
 
@@ -26,8 +25,15 @@ mkdir -v $LFS/tools
 # Make a /tools symlink to here, so the new toolchain always points to /tools
 # (which is the directory we just made, according to the chrooted system)
 ln -sv $LFS/tools /
-[ "$?" != "0" ] \
-	&& printf "%s\n%s\n" \
-		"Error: /tools symlink not created! This is important!" \
-		"Delete /tools and run this script again." >&2 \
-	&& exit 1
+
+# Deal with the error case: Either the symlink is already there, or you need to
+# deal with /tools yourself and try again.
+[ "$?" != "0" ] && \
+	if [ "$(readlink /tools)" == "$LFS/tools" ]; then
+		printf "Tools symlink already installed according to readlink.\n"
+	else
+		printf "%s\n%s\n" \
+			"Error: /tools symlink not created! This is important!" \
+			"Do something with /tools and run this script again." >&2
+		exit 1
+	fi
