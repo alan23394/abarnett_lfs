@@ -5,7 +5,7 @@
 
 # These commands remove unneeded debugging symbols
 strip --strip-debug /tools/lib/*
-/usr/bin/strip --strip-unneeded /tools/{,s}bin/*lib/*
+/usr/bin/strip --strip-unneeded /tools/{,s}bin/*
 
 # This command removes documentation
 rm -rf /tools/{,share}/{info,man,doc}
