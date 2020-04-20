@@ -93,8 +93,8 @@ mv mpfr-4.0.2 mpfr
 printf "done!\n"; ((++CUR_TASK))
 
 printf "(%3d/%3d) Extracting gmp..." $CUR_TASK $NUM_TASKS
-tar -xf ../gmp-6.1.2.tar.xz
-mv gmp-6.1.2 gmp
+tar -xf ../gmp-6.2.0.tar.xz
+mv gmp-6.2.0 gmp
 printf "done!\n"; ((++CUR_TASK))
 
 printf "(%3d/%3d) Extracting mpc..." $CUR_TASK  $NUM_TASKS
@@ -311,8 +311,8 @@ mv mpfr-4.0.2 mpfr
 printf "done!\n"; ((++CUR_TASK))
 
 printf "(%3d/%3d) Extracting gmp again..." $CUR_TASK $NUM_TASKS
-tar -xf ../gmp-6.1.2.tar.xz
-mv gmp-6.1.2 gmp
+tar -xf ../gmp-6.2.0.tar.xz
+mv gmp-6.2.0 gmp
 printf "done!\n"; ((++CUR_TASK))
 
 printf "(%3d/%3d) Extracting mpc again..." $CUR_TASK  $NUM_TASKS
