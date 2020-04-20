@@ -42,11 +42,11 @@ pushd $LFS/sources
 
 # Binutils Pass 1 {{{
 printf "(%3d/%3d) Extracting binutils..." $CUR_TASK $NUM_TASKS
-tar -xf binutils-2.32.tar.xz
+tar -xf binutils-2.34.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
 # Binutils wants to be made in a build folder
-mkdir -v binutils-2.32/build && pushd binutils-2.32/build
+mkdir -v binutils-2.34/build && pushd binutils-2.34/build
 
 printf "(%3d/%3d) Compiling binutils..." $CUR_TASK $NUM_TASKS
 
@@ -75,17 +75,17 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning binutils..." $CUR_TASK $NUM_TASKS
-rm -rf binutils-2.32
+rm -rf binutils-2.34
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # GCC Pass 1 {{{
 printf "(%3d/%3d) Extracting GCC..." $CUR_TASK $NUM_TASKS
-tar -xf gcc-8.2.0.tar.xz
+tar -xf gcc-9.2.0.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
 # pushd into gcc folder so I can extract other things into here
-pushd gcc-8.2.0
+pushd gcc-9.2.0
 
 printf "(%3d/%3d) Extracting mpfr..." $CUR_TASK $NUM_TASKS
 tar -xf ../mpfr-4.0.2.tar.xz
@@ -167,34 +167,34 @@ popd
 popd
 
 printf "(%3d/%3d) Cleaning gcc..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
+rm -rf gcc-9.2.0
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Linux API Headers {{{
 printf "(%3d/%3d) Extracting Linux Headers..." $CUR_TASK $NUM_TASKS
-tar -xf linux-4.20.12.tar.xz
+tar -xf linux-5.5.3.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd linux-4.20.12
+pushd linux-5.5.3
 printf "(%3d/%3d) Installing Linux Headers..." $CUR_TASK $NUM_TASKS
 make mrproper								>> "$LOG_DIR/linux_headers.log"
-make INSTALL_HDR_PATH=dest headers_install	>> "$LOG_DIR/linux_headers.log"
-cp -rv dest/include/* /tools/include		>> "$LOG_DIR/linux_headers.log"
+make headers_install						>> "$LOG_DIR/linux_headers.log"
+cp -rv usr/include/* /tools/include			>> "$LOG_DIR/linux_headers.log"
 printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning Linux Headers..." $CUR_TASK $NUM_TASKS
-rm -rf linux-4.20.12
+rm -rf linux-5.5.3
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Glibc {{{
 printf "(%3d/%3d) Extracting Glibc..." $CUR_TASK $NUM_TASKS
-tar -xf glibc-2.29.tar.xz
+tar -xf glibc-2.31.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-mkdir -v glibc-2.29/build && pushd glibc-2.29/build
+mkdir -v glibc-2.31/build && pushd glibc-2.31/build
 
 printf "(%3d/%3d) Compiling Glibc..." $CUR_TASK $NUM_TASKS
 ../configure							\
@@ -227,16 +227,16 @@ rm -v dummy.c a.out
 # }}}
 
 printf "(%3d/%3d) Cleaning Glibc..." $CUR_TASK $NUM_TASKS
-rm -rf glibc-2.29
+rm -rf glibc-2.31
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Libstdc++ from GCC {{{
 printf "(%3d/%3d) Extracting GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
-tar -xf gcc-8.2.0.tar.xz
+tar -xf gcc-9.2.0.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-mkdir -v gcc-8.2.0/build &&  pushd gcc-8.2.0/build
+mkdir -v gcc-9.2.0/build &&  pushd gcc-9.2.0/build
 
 printf "(%3d/%3d) Compiling libstdc++..." $CUR_TASK $NUM_TASKS
 ../libstdc++-v3/configure		\
@@ -246,7 +246,7 @@ printf "(%3d/%3d) Compiling libstdc++..." $CUR_TASK $NUM_TASKS
 	--disable-nls				\
 	--disable-libstdcxx-threads	\
 	--disable-libstdcxx-pch		\
-	--with-gxx-include-dir=/tools/$LFS_TGT/include/c++/8.2.0 \
+	--with-gxx-include-dir=/tools/$LFS_TGT/include/c++/9.2.0 \
 								>> "$LOG_DIR/libstdc++.log"
 make $MAKEFLAGS					>> "$LOG_DIR/libstdc++.log"
 make $MAKEFLAGS install			>> "$LOG_DIR/libstdc++.log"
@@ -256,17 +256,17 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning GCC (for libstdc++)..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
+rm -rf gcc-9.2.0
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Binutils pass 2 {{{
 printf "(%3d/%3d) Extracting binutils again..." $CUR_TASK $NUM_TASKS
-tar -xf binutils-2.32.tar.xz
+tar -xf binutils-2.34.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
 # Binutils wants to be made in a build folder
-mkdir -v binutils-2.32/build && pushd binutils-2.32/build
+mkdir -v binutils-2.34/build && pushd binutils-2.34/build
 
 printf "(%3d/%3d) Compiling binutils again..." $CUR_TASK $NUM_TASKS
 
@@ -283,8 +283,8 @@ make $MAKEFLAGS					>> "$LOG_DIR/binutils_pass2.log"
 make $MAKEFLAGS install			>> "$LOG_DIR/binutils_pass2.log"
 
 # Prepares the linker for readjusting later
-make -C ld clean
-make -C ld LIB_PATH=/usr/lib:/lib
+make -C ld clean					>> "$LOG_DIR/binutils_pass2.log"
+make -C ld LIB_PATH=/usr/lib:/lib	>> "$LOG_DIR/binutils_pass2.log"
 cp -v ld/ld-new /tools/bin
 
 printf "done!\n"; ((++CUR_TASK))
@@ -293,17 +293,17 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning binutils again..." $CUR_TASK $NUM_TASKS
-rm -rf binutils-2.32
+rm -rf binutils-2.34
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # GCC Pass 2 {{{
 printf "(%3d/%3d) Extracting GCC again (pass 2!)..." $CUR_TASK $NUM_TASKS
-tar -xf gcc-8.2.0.tar.xz
+tar -xf gcc-9.2.0.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
 # pushd into gcc folder so I can extract other things into here
-pushd gcc-8.2.0
+pushd gcc-9.2.0
 
 printf "(%3d/%3d) Extracting mpfr again..." $CUR_TASK $NUM_TASKS
 tar -xf ../mpfr-4.0.2.tar.xz
@@ -349,6 +349,10 @@ case $(uname -m) in
 			-i.orig gcc/config/i386/t-linux64
 		;;
 esac
+
+# Fixing a problem introduced in Glibc-2.31
+sed -e '1161 s|^|//|' \
+	-i libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
 
 mkdir -v build && pushd build
 
@@ -398,17 +402,17 @@ rm dummy.c a.out
 # }}}
 
 printf "(%3d/%3d) Cleaning gcc again..." $CUR_TASK $NUM_TASKS
-rm -rf gcc-8.2.0
+rm -rf gcc-9.2.0
 printf "done!\n"; ((++CUR_TASK))
 
 # }}}
 
 # TCL {{{
 printf "(%3d/%3d) Extracting TCL..." $CUR_TASK $NUM_TASKS
-tar -xf tcl8.6.9-src.tar.gz
+tar -xf tcl8.6.10-src.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd tcl8.6.9/unix
+pushd tcl8.6.10/unix
 printf "(%3d/%3d) Compiling TCL..." $CUR_TASK $NUM_TASKS
 ./configure --prefix=/tools				>> "$LOG_DIR/tcl.log"
 make $MAKEFLAGS							>> "$LOG_DIR/tcl.log"
@@ -420,7 +424,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning TCL..." $CUR_TASK $NUM_TASKS
-rm -rf tcl8.6.9
+rm -rf tcl8.6.10
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -503,11 +507,14 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Ncurses {{{
 printf "(%3d/%3d) Extracting ncurses..." $CUR_TASK $NUM_TASKS
-tar -xf ncurses-6.1.tar.gz
+tar -xf ncurses-6.2.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd ncurses-6.1
+pushd ncurses-6.2
 printf "(%3d/%3d) Compiling ncurses..." $CUR_TASK $NUM_TASKS
+
+# Make sure gawk is found
+sed -i s/mawk// configure
 
 ./configure					\
 	--prefix=/tools			\
@@ -526,7 +533,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning ncurses..." $CUR_TASK $NUM_TASKS
-rm -rf ncurses-6.1
+rm -rf ncurses-6.2
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -560,10 +567,10 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Bison {{{
 printf "(%3d/%3d) Extracting bison..." $CUR_TASK $NUM_TASKS
-tar -xf bison-3.3.2.tar.xz
+tar -xf bison-3.5.2.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd bison-3.3.2
+pushd bison-3.5.2
 printf "(%3d/%3d) Compiling bison..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools		>> "$LOG_DIR/bison.log"
@@ -576,20 +583,30 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning bison..." $CUR_TASK $NUM_TASKS
-rm -rf bison-3.3.2
+rm -rf bison-3.5.2
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Bzip2 {{{
 printf "(%3d/%3d) Extracting bzip2..." $CUR_TASK $NUM_TASKS
-tar -xf bzip2-1.0.6.tar.gz
+tar -xf bzip2-1.0.8.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd bzip2-1.0.6
+pushd bzip2-1.0.8
 printf "(%3d/%3d) Compiling bzip2..." $CUR_TASK $NUM_TASKS
 
+# First we need to compile the shared library
+make $MAKEFLAGS -f Makefile-libbz2_so	>> "$LOG_DIR/bzip2.log"
+make clean								>> "$LOG_DIR/bzip2.log"
+
+# Now we compile the static library
 make $MAKEFLAGS							>> "$LOG_DIR/bzip2.log"
+
+# Install the libraries
 make $MAKEFLAGS PREFIX=/tools install	>> "$LOG_DIR/bzip2.log"
+cp -v bzip2-shared /tools/bin/bzip2		>> "$LOG_DIR/bzip2.log"
+cp -av libbz2.so* /tools/lib			>> "$LOG_DIR/bzip2.log"
+ln -sv libbz2.so.1.0 /tools/lib/libbz2.so	>> "$LOG_DIR/bzip2.log"
 
 printf "done!\n"; ((++CUR_TASK))
 
@@ -597,16 +614,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning bzip2..." $CUR_TASK $NUM_TASKS
-rm -rf bzip2-1.0.6
+rm -rf bzip2-1.0.8
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Coreutils {{{
 printf "(%3d/%3d) Extracting coreutils..." $CUR_TASK $NUM_TASKS
-tar -xf coreutils-8.30.tar.xz
+tar -xf coreutils-8.31.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd coreutils-8.30
+pushd coreutils-8.31
 printf "(%3d/%3d) Compiling coreutils..." $CUR_TASK $NUM_TASKS
 
 ./configure								\
@@ -621,7 +638,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning coreutils..." $CUR_TASK $NUM_TASKS
-rm -rf coreutils-8.30
+rm -rf coreutils-8.31
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -649,10 +666,10 @@ printf "done!\n"; ((++CUR_TASK))
 
 # File {{{
 printf "(%3d/%3d) Extracting file..." $CUR_TASK $NUM_TASKS
-tar -xf file-5.36.tar.gz
+tar -xf file-5.38.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd file-5.36
+pushd file-5.38
 printf "(%3d/%3d) Compiling file..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/file.log"
@@ -665,21 +682,17 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning file..." $CUR_TASK $NUM_TASKS
-rm -rf file-5.36
+rm -rf file-5.38
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Findutils {{{
 printf "(%3d/%3d) Extracting findutils..." $CUR_TASK $NUM_TASKS
-tar -xf findutils-4.6.0.tar.gz
+tar -xf findutils-4.7.0.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd findutils-4.6.0
+pushd findutils-4.7.0
 printf "(%3d/%3d) Compiling findutils..." $CUR_TASK $NUM_TASKS
-
-sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' gl/lib/*.c
-sed -i '/unistd/a #include <sys/sysmacros.h>' gl/lib/mountlist.c
-echo "#define _IO_IN_BACKUP 0x100" >> gl/lib/stdio-impl.h
 
 ./configure --prefix=/tools				>> "$LOG_DIR/findutils.log"
 make $MAKEFLAGS							>> "$LOG_DIR/findutils.log"
@@ -691,16 +704,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning findutils..." $CUR_TASK $NUM_TASKS
-rm -rf findutils-4.6.0
+rm -rf findutils-4.7.0
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Gawk {{{
 printf "(%3d/%3d) Extracting gawk..." $CUR_TASK $NUM_TASKS
-tar -xf gawk-4.2.1.tar.xz
+tar -xf gawk-5.0.1.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd gawk-4.2.1
+pushd gawk-5.0.1
 printf "(%3d/%3d) Compiling gawk..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/gawk.log"
@@ -713,30 +726,23 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning gawk..." $CUR_TASK $NUM_TASKS
-rm -rf gawk-4.2.1
+rm -rf gawk-5.0.1
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Gettext {{{
 printf "(%3d/%3d) Extracting gettext..." $CUR_TASK $NUM_TASKS
-tar -xf gettext-0.19.8.1.tar.xz
+tar -xf gettext-0.20.1.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd gettext-0.19.8.1
+pushd gettext-0.20.1
 printf "(%3d/%3d) Compiling gettext..." $CUR_TASK $NUM_TASKS
 
-cd gettext-tools
-EMACS="no" ./configure				\
-	--prefix=/tools					\
-	--disable-shared				>> "$LOG_DIR/gettext.log"
-make $MAKEFLAGS -C gnulib-lib		>> "$LOG_DIR/gettext.log"
-make $MAKEFLAGS -C intl pluralx.c	>> "$LOG_DIR/gettext.log"
-make $MAKEFLAGS -C src msgfmt		>> "$LOG_DIR/gettext.log"
-make $MAKEFLAGS -C src msgmerge		>> "$LOG_DIR/gettext.log"
-make $MAKEFLAGS -C src xgettext		>> "$LOG_DIR/gettext.log"
+./configure --disable-shared		>> "$LOG_DIR/gettext.log"
+make $MAKEFLAGS						>> "$LOG_DIR/gettext.log"
 
-# Install the files by hand
-cp -v src/{msgfmt,msgmerge,xgettext} /tools/bin
+# Install the new programs by hand
+cp -v gettext-tools/src/{msgfmt,msgmerge,xgettext} /tools/bin
 
 printf "done!\n"; ((++CUR_TASK))
 
@@ -744,16 +750,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning gettext..." $CUR_TASK $NUM_TASKS
-rm -rf gettext-0.19.8.1
+rm -rf gettext-0.20.1
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Grep {{{
 printf "(%3d/%3d) Extracting grep..." $CUR_TASK $NUM_TASKS
-tar -xf grep-3.3.tar.xz
+tar -xf grep-3.4.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd grep-3.3
+pushd grep-3.4
 printf "(%3d/%3d) Compiling grep..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/grep.log"
@@ -766,7 +772,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning grep..." $CUR_TASK $NUM_TASKS
-rm -rf grep-3.3
+rm -rf grep-3.4
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -794,14 +800,11 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Make {{{
 printf "(%3d/%3d) Extracting make..." $CUR_TASK $NUM_TASKS
-tar -xf make-4.2.1.tar.bz2
+tar -xf make-4.3.tar.bz2
 printf "done!\n"; ((++CUR_TASK))
 
-pushd make-4.2.1
+pushd make-4.3
 printf "(%3d/%3d) Compiling make..." $CUR_TASK $NUM_TASKS
-
-# Apparently this is an error work around. looks like diff notation
-sed -i '211,217 d; 219,229 d; 232 d' glob/glob.c
 
 ./configure					\
 	--prefix=/tools			\
@@ -815,7 +818,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning make..." $CUR_TASK $NUM_TASKS
-rm -rf make-4.2.1
+rm -rf make-4.3
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -843,10 +846,10 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Perl {{{
 printf "(%3d/%3d) Extracting perl..." $CUR_TASK $NUM_TASKS
-tar -xf perl-5.28.1.tar.xz
+tar -xf perl-5.30.1.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd perl-5.28.1
+pushd perl-5.30.1
 printf "(%3d/%3d) Compiling perl..." $CUR_TASK $NUM_TASKS
 
 sh Configure		\
@@ -859,8 +862,8 @@ make $MAKEFLAGS		>> "$LOG_DIR/perl.log"
 
 # Install files manually
 cp -v perl cpan/podlators/scripts/pod2man /tools/bin
-mkdir -pv /tools/lib/perl5/5.28.1
-cp -Rv lib/* /tools/lib/perl5/5.28.1
+mkdir -pv /tools/lib/perl5/5.30.1
+cp -Rv lib/* /tools/lib/perl5/5.30.1
 
 printf "done!\n"; ((++CUR_TASK))
 
@@ -868,16 +871,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning perl..." $CUR_TASK $NUM_TASKS
-rm -rf perl-5.28.1
+rm -rf perl-5.30.1
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Python {{{
 printf "(%3d/%3d) Extracting python..." $CUR_TASK $NUM_TASKS
-tar -xf Python-3.7.2.tar.xz
+tar -xf Python-3.8.1.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd Python-3.7.2
+pushd Python-3.8.1
 printf "(%3d/%3d) Compiling python..." $CUR_TASK $NUM_TASKS
 
 # This short circuits a function by adding a return statement right after it's
@@ -898,16 +901,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning python..." $CUR_TASK $NUM_TASKS
-rm -rf Python-3.7.2
+rm -rf Python-3.8.1
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Sed {{{
 printf "(%3d/%3d) Extracting sed..." $CUR_TASK $NUM_TASKS
-tar -xf sed-4.7.tar.xz
+tar -xf sed-4.8.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd sed-4.7
+pushd sed-4.8
 printf "(%3d/%3d) Compiling sed..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/sed.log"
@@ -920,16 +923,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning sed..." $CUR_TASK $NUM_TASKS
-rm -rf sed-4.7
+rm -rf sed-4.8
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Tar {{{
 printf "(%3d/%3d) Extracting tar..." $CUR_TASK $NUM_TASKS
-tar -xf tar-1.31.tar.xz
+tar -xf tar-1.32.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd tar-1.31
+pushd tar-1.32
 printf "(%3d/%3d) Compiling tar..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/tar.log"
@@ -942,16 +945,16 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning tar..." $CUR_TASK $NUM_TASKS
-rm -rf tar-1.31
+rm -rf tar-1.32
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
 # Texinfo {{{
 printf "(%3d/%3d) Extracting texinfo..." $CUR_TASK $NUM_TASKS
-tar -xf texinfo-6.5.tar.xz
+tar -xf texinfo-6.7.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
-pushd texinfo-6.5
+pushd texinfo-6.7
 printf "(%3d/%3d) Compiling texinfo..." $CUR_TASK $NUM_TASKS
 
 ./configure --prefix=/tools				>> "$LOG_DIR/texinfo.log"
@@ -964,7 +967,7 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 printf "(%3d/%3d) Cleaning texinfo..." $CUR_TASK $NUM_TASKS
-rm -rf texinfo-6.5
+rm -rf texinfo-6.7
 printf "done!\n"; ((++CUR_TASK))
 # }}}
 
@@ -994,9 +997,9 @@ printf "done!\n"; ((++CUR_TASK))
 popd
 
 exit
-# Below here lie a template, and a list of package tarballs for easy copying
 # **************************************************************************** #
 
+# A template, for easy copying
 # TARGET {{{
 printf "(%3d/%3d) Extracting TARGET..." $CUR_TASK $NUM_TASKS
 tar -xf 
@@ -1017,63 +1020,6 @@ popd
 printf "(%3d/%3d) Cleaning TARGET..." $CUR_TASK $NUM_TASKS
 rm -rf 
 printf "done!\n"; ((++CUR_TASK))
-# }}}
-
-# Packages {{{
-XML-Parser-2.44.tar.gz
-acl-2.2.53.tar.gz
-attr-2.4.48.tar.gz
-autoconf-2.69.tar.xz
-automake-1.16.1.tar.xz
-bc-1.07.1.tar.gz
-bzip2-1.0.6-install_docs-1.patch
-check-0.12.0.tar.gz
-coreutils-8.30-i18n-1.patch
-dbus-1.12.12.tar.gz
-e2fsprogs-1.44.5.tar.gz
-elfutils-0.176.tar.bz2
-eudev-3.2.7.tar.gz
-expat-2.2.6.tar.bz2
-flex-2.6.4.tar.gz
-gdbm-1.18.1.tar.gz
-glibc-2.29-fhs-1.patch
-gperf-3.1.tar.gz
-groff-1.22.4.tar.gz
-grub-2.02.tar.xz
-iana-etc-2.30.tar.bz2
-inetutils-1.9.4.tar.xz
-intltool-0.51.0.tar.gz
-iproute2-4.20.0.tar.xz
-kbd-2.0.4-backspace-1.patch
-kbd-2.0.4.tar.xz
-kmod-26.tar.xz
-less-530.tar.gz
-lfs-bootscripts-20180820.tar.bz2
-libcap-2.26.tar.xz
-libffi-3.2.1.tar.gz
-libpipeline-1.5.1.tar.gz
-libtool-2.4.6.tar.xz
-man-db-2.8.5.tar.xz
-man-pages-4.16.tar.xz
-md5sums
-meson-0.49.2.tar.gz
-ninja-1.9.0.tar.gz
-openssl-1.1.1a.tar.gz
-pkg-config-0.29.2.tar.gz
-procps-ng-3.3.15.tar.xz
-psmisc-23.2.tar.xz
-python-3.7.2-docs-html.tar.bz2
-readline-8.0.tar.gz
-shadow-4.6.tar.xz
-sysklogd-1.5.1.tar.gz
-sysvinit-2.93-consolidated-1.patch
-sysvinit-2.93.tar.xz
-tcl8.6.9-src.tar.gz
-tzdata2018i.tar.gz
-udev-lfs-20171102.tar.bz2
-util-linux-2.33.1.tar.xz
-vim-8.1.tar.bz2
-zlib-1.2.11.tar.xz
 # }}}
 
 # vim: foldmethod=marker foldmarker={{{,}}}
