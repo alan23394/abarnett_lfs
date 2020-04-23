@@ -66,7 +66,7 @@ pretty_make()
 
 	printf "${COLOR_EXTRACT}Extracting ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
 	mkdir "$BUILD_DIR"
-	if ! tar -xvf "$TARBALL" \
+	if ! tar -xf "$TARBALL" \
 			-C "$BUILD_DIR" \
 			--strip-components=1 \
 			>> "$LOG_FILE" 2>&1; then
@@ -79,18 +79,20 @@ pretty_make()
 	pushd "$BUILD_DIR" > /dev/null
 
 	printf "${COLOR_MAKE}Configuring/making/installing ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
+	pretty_log "$(date)" >> "$LOG_FILE"
 	if ! "$BUILD" >> "$LOG_FILE" 2>&1; then
 		printf "${COLOR_ERROR}Failure! Check log file $LOG_FILE for details${COLOR_OFF}\n"
 		printf "Not cleaning $BUILD_DIR.\n"
 		exit
 	fi
+	pretty_log "$(date)" >> "$LOG_FILE"
 	printf "${COLOR_MAKE}done!${COLOR_OFF}\n"
 
 	# Leave build directory
 	popd > /dev/null
 
 	printf "${COLOR_CLEAN}Cleaning ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
-	rm -vr "$BUILD_DIR" >> "$LOG_FILE"
+	rm -rf "$BUILD_DIR"
 	printf "${COLOR_CLEAN}done!${COLOR_OFF}\n"
 }
 
