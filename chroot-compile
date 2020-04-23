@@ -79,13 +79,13 @@ pretty_make()
 	pushd "$BUILD_DIR" > /dev/null
 
 	printf "${COLOR_MAKE}Configuring/making/installing ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
-	pretty_log "$(date)" >> "$LOG_FILE"
+	pretty_log "Starting" >> "$LOG_FILE"
 	if ! "$BUILD" >> "$LOG_FILE" 2>&1; then
 		printf "${COLOR_ERROR}Failure! Check log file $LOG_FILE for details${COLOR_OFF}\n"
 		printf "Not cleaning $BUILD_DIR.\n"
 		exit
 	fi
-	pretty_log "$(date)" >> "$LOG_FILE"
+	pretty_log "Ending" >> "$LOG_FILE"
 	printf "${COLOR_MAKE}done!${COLOR_OFF}\n"
 
 	# Leave build directory
@@ -99,7 +99,7 @@ pretty_make()
 # This function is for printing messages to your log file
 pretty_log()
 {
-	printf "[LFSPKG] $1\n"
+	printf "[LFSPKG] $(date "+%F-%T") : $1\n"
 }
 
 # These functions are for putting around test cases, so you can find their
