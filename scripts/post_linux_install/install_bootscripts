@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    install_bootscripts                                :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2020/04/23 12:20:56 by marvin            #+#    #+#              #
+#    Updated: 2020/04/23 12:20:56 by marvin           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+# This uses the chroot compiler to install the lfs-bootscripts package
+
+source ./chroot_compile
+
+make_lfs_bootscripts()
+{
+	make install
+}
+
+pretty_make								\
+	"lfs_bootscripts"					\
+	"lfs-bootscripts-20191031.tar.xz"	\
+	make_lfs_bootscripts
