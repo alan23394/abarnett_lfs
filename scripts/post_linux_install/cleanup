@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Clean up extra files from the tests
+rm -rf /tmp/*
+
+# Remove /tools, as it is no longer needed
+rm -rf /tools
+
+# There were several static libraries that were not suppressed earlier in the
+# chapter in order to satisfy the regression tests in several packages. These
+# libraries are from binutils, bzip2, e2fsprogs, flex, libtool, and zlib. We
+# can remove them now.
+rm -f /usr/lib/lib{bfd,opcodes}.a
+rm -f /usr/lib/libbz2.a
+rm -f /usr/lib/lib{com_err,e2p,ext2fs,ss}.a
+rm -f /usr/lib/libltdl.a
+rm -f /usr/lib/libfl.a
+rm -f /usr/lib/libz.a
+
+# Remove all "libtool archive" files, they are completely unnecessary
+find /usr/lib /usr/libexec -name \*.la -delete
+
+printf "Now logout and log back in, with the new chroot command\n"
+printf "/tools/bin should no longer be a part of your path\n"
