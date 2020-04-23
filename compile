@@ -31,7 +31,7 @@ MAKEFLAGS='-j2'
 # Current task, for printing status
 CUR_TASK=1
 # Number of tasks, for printing status
-NUM_TASKS=80
+NUM_TASKS=99
 
 # Change directory with pushd (partnered with a popd at the end)
 # Each package needs to start compiling from the sources folder
@@ -688,7 +688,7 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Findutils {{{
 printf "(%3d/%3d) Extracting findutils..." $CUR_TASK $NUM_TASKS
-tar -xf findutils-4.7.0.tar.gz
+tar -xf findutils-4.7.0.tar.xz
 printf "done!\n"; ((++CUR_TASK))
 
 pushd findutils-4.7.0
@@ -800,7 +800,7 @@ printf "done!\n"; ((++CUR_TASK))
 
 # Make {{{
 printf "(%3d/%3d) Extracting make..." $CUR_TASK $NUM_TASKS
-tar -xf make-4.3.tar.bz2
+tar -xf make-4.3.tar.gz
 printf "done!\n"; ((++CUR_TASK))
 
 pushd make-4.3
