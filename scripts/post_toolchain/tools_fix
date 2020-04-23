@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    tools_fix                                          :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2020/04/20 00:44:40 by marvin            #+#    #+#              #
+#    Updated: 2020/04/20 00:44:40 by marvin           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+# Make sure we're running as root
+source resources/root_check
+# Grab LFS variable
+source resources/config
+
+# This changes ownership of the tools directory to root, that way a user
+# created later on the new system won't get access to it. It might still be
+# around later for other builds of lfs.
+chown -R root:root $LFS/tools
