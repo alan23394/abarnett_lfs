@@ -37,6 +37,14 @@ LOG_DIR="/sources/log"
 # that way you can control all the variables from here.
 MAKEFLAGS='-j2'
 
+# Colors. Use at your own risk.
+COLOR_NAME="\e[1;33m"
+COLOR_EXTRACT="\e[1;35m"
+COLOR_MAKE="\e[1;32m"
+COLOR_CLEAN="\e[1;34m"
+COLOR_ERROR="\e[1;31m"
+COLOR_OFF="\e[m"
+
 pretty_make()
 {
 	# Label the positional parameters
@@ -56,32 +64,32 @@ pretty_make()
 	# Setting log file with package name and date
 	LOG_FILE="$LOG_DIR/$PKG_NAME/$DATE.log"
 
-	printf "Extracting $PKG_NAME..."
+	printf "${COLOR_EXTRACT}Extracting ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
 	mkdir "$BUILD_DIR"
 	if ! tar -xvf "$TARBALL" \
 			-C "$BUILD_DIR" \
 			--strip-components=1 \
 			>> "$LOG_FILE" 2>&1; then
-		printf "Extraction failed! Could not extract $TARBALL\n"
+		printf "${COLOR_ERROR}Extraction failed! Could not extract $TARBALL${COLOR_OFF}\n"
 		exit
 	fi
-	printf "done!\n"
+	printf "${COLOR_EXTRACT}done!${COLOR_OFF}\n"
 
 	# cd into build directory
 	pushd "$BUILD_DIR" > /dev/null
 
-	printf  "Configuring/making/installing $PKG_NAME..."
+	printf "${COLOR_MAKE}Configuring/making/installing ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
 	if ! "$BUILD" >> "$LOG_FILE" 2>&1; then
-		printf "Failure! Check log file $LOG_FILE for details\n"
+		printf "${COLOR_ERROR}Failure! Check log file $LOG_FILE for details${COLOR_OFF}\n"
 		printf "Not cleaning $BUILD_DIR.\n"
 		exit
 	fi
-	printf "done!\n"
+	printf "${COLOR_MAKE}done!${COLOR_OFF}\n"
 
 	# Leave build directory
 	popd > /dev/null
 
-	printf "Cleaning $PKG_NAME..."
+	printf "${COLOR_CLEAN}Cleaning ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
 	rm -vr "$BUILD_DIR" >> "$LOG_FILE"
-	printf "done!\n"
+	printf "${COLOR_CLEAN}done!${COLOR_OFF}\n"
 }
