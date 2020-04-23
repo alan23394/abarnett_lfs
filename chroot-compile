@@ -93,3 +93,20 @@ pretty_make()
 	rm -vr "$BUILD_DIR" >> "$LOG_FILE"
 	printf "${COLOR_CLEAN}done!${COLOR_OFF}\n"
 }
+
+# This function is for printing messages to your log file
+pretty_log()
+{
+	printf "[LFSPKG] $1\n"
+}
+
+# These functions are for putting around test cases, so you can find their
+# output in your logs.
+pretty_test_start()
+{
+	pretty_log "Tests start"
+}
+pretty_test_end()
+{
+	pretty_log "Tests end"
+}
