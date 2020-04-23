@@ -12,6 +12,7 @@
 #                                                                              #
 # **************************************************************************** #
 
+# Get compilation functions
 source ./chroot-compile
 
 # Linux API headers {{{
@@ -29,7 +30,2493 @@ make_linux_headers()
 
 pretty_make					\
 	"linux-headers"			\
-	"linux-4.20.12.tar.xz"	\
+	"linux-5.5.3.tar.xz"	\
 	"make_linux_headers"
 
 # }}}
+
+# Man pages {{{
+
+make_man_pages()
+{
+	make install
+}
+
+pretty_make					\
+	"man-pages"				\
+	"man-pages-5.05.tar.xz"	\
+	"make_man_pages"
+
+# }}}
+
+# Glibc {{{
+
+make_glibc()
+{
+	# Apply patch to make glibc programs use locations other than /var/db
+	patch -Np1 -i ../glibc-2.31-fhs-1.patch
+
+	# Create symlink for LSB compliance
+	# Additionally (for x64) create compatibility symlink for the dynamic loader
+	case $(uname -m) in
+		i?86)
+			ln -sfv ld-linux.so.2 /lib/ld-lsb.so.3
+			;;
+		x86_64)
+			ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64
+			ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64/ld-lsb-x86-64.so.3
+			;;
+	esac
+
+	# Build in dedicated directory
+	mkdir -v build && cd build
+
+	# Prepare Glibc for compilation
+	CC="gcc -ffile-prefix-map=/tools=/usr"	\
+	../configure							\
+		--prefix=/usr						\
+		--disable-werror					\
+		--enable-kernel=3.2					\
+		--enable-stack-protector=strong		\
+		--with-headers=/usr/include			\
+		libc_cv_slibdir=/lib
+
+	make $MAKEFLAGS
+
+	# This symlink is necessary for the test, it will be overwritten later
+	case $(uname -m) in
+		i?86)
+			ln -sfnv $PWD/elf/ld-linux.so.2 /lib
+			;;
+		x86_64)
+			ln -sfnv $PWD/elf/ld-linux-x86-64.so.2 /lib
+			;;
+	esac
+
+	# The test suite is important, make sure you check it.
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	# This fixes a harmless error that comes in the install step
+	touch /etc/ld.so.conf
+	# Fix to skip unneeded sanity check that fails in the LFS partial env
+	sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
+
+	# Install glibc
+	pretty_log "Installing"
+	make install
+
+	# Install configuration file and runtime dir for nscd
+	cp -v ../nscd/nscd.conf /etc/nscd.conf
+	mkdir -pv /var/cache/nscd
+
+	# Install a buncha locales
+	# These ensure that future test suites check cases for other languages
+	mkdir -pv /usr/lib/locale
+	localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+	localedef -i cs_CZ -f UTF-8 cs_CZ.UTF-8
+	localedef -i de_DE -f ISO-8859-1 de_DE
+	localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro
+	localedef -i de_DE -f UTF-8 de_DE.UTF-8
+	localedef -i el_GR -f ISO-8859-7 el_GR
+	localedef -i en_GB -f UTF-8 en_GB.UTF-8
+	localedef -i en_HK -f ISO-8859-1 en_HK
+	localedef -i en_PH -f ISO-8859-1 en_PH
+	localedef -i en_US -f ISO-8859-1 en_US
+	localedef -i en_US -f UTF-8 en_US.UTF-8
+	localedef -i es_MX -f ISO-8859-1 es_MX
+	localedef -i fa_IR -f UTF-8 fa_IR
+	localedef -i fr_FR -f ISO-8859-1 fr_FR
+	localedef -i fr_FR@euro -f ISO-8859-15 fr_FR@euro
+	localedef -i fr_FR -f UTF-8 fr_FR.UTF-8
+	localedef -i it_IT -f ISO-8859-1 it_IT
+	localedef -i it_IT -f UTF-8 it_IT.UTF-8
+	localedef -i ja_JP -f EUC-JP ja_JP
+	localedef -i ja_JP -f SHIFT_JIS ja_JP.SIJS 2> /dev/null || true
+	localedef -i ja_JP -f UTF-8 ja_JP.UTF-8
+	localedef -i ru_RU -f KOI8-R ru_RU.KOI8-R
+	localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
+	localedef -i tr_TR -f UTF-8 tr_TR.UTF-8
+	localedef -i zh_CN -f GB18030 zh_CN.GB18030
+	localedef -i zh_HK -f BIG5-HKSCS zh_HK.BIG5-HKSCS
+
+	# Glibc defaults do not work well in a network environment, apparently
+	cat > /etc/nsswitch.conf << "EOF"
+# Begin /etc/nsswitch.conf
+
+passwd: files
+group: files
+shadow: files
+
+hosts: files dns
+networks: files
+
+protocols: files
+services: files
+ethers: files
+rpc: files
+
+# End /etc/nsswitch.conf
+EOF
+
+	# Install and set up time zone data
+	tar -xf ../../tzdata2019c.tar.gz
+
+	ZONEINFO=/usr/share/zoneinfo
+	mkdir -pv $ZONEINFO/{posix,right}
+
+	for tz in etcetera southamerica northamerica europe africa antarctica \
+			asia australasia backward pacificnew systemv; do
+		zic -L /dev/null	-d $ZONEINFO		${tz}
+		zic -L /dev/null	-d $ZONEINFO/posix	${tz}
+		zic -L leapseconds	-d $ZONEINFO/right	${tz}
+	done
+
+	cp -v zone.tab zone1970.tab iso3166.tab $ZONEINFO
+	zic -d $ZONEINFO -p America/New_York
+	unset ZONEINFO
+
+	# Create localtime file for your timezone
+	ln -sfv /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+
+	# Configure the dynamic loader
+	cat > /etc/ld.so.conf << "EOF"
+# Begin /etc/ld.so.conf
+/usr/local/lib
+/opt/lib
+EOF
+}
+
+pretty_make					\
+	"glibc"					\
+	"glibc-2.31.tar.xz"		\
+	"make_glibc"
+
+# }}}
+
+# Adjusting the toolchain {{{
+
+# Backup /tools linker, and replace it with the adjusted linker from chapter 5
+mv -v /tools/bin/ld{,-old}
+mv -v /tools/$(uname -m)-pc-linux-gnu/bin/ld{,-old}
+mv -v /tools/bin/ld{-new,}
+ln -sv /tools/bin/ld /tools/$(uname -m)-pc-linux-gnu/bin/ld
+
+# Amend GCC specs file to point to new dynamic linker
+gcc -dumpspecs | sed -e 's@/tools@@g'					\
+	-e '/\*startfile_prefix_spec:/{n;s@.*@/usr/lib/ @}'	\
+	-e '/\*cpp:/{n;s@$@ -isystem /usr/include@}' >		\
+	$(dirname $(gcc --print-libgcc-file-name))/specs
+
+# Test linker {{{
+pretty_log "Test that new compiling and linking is working..."
+echo 'int main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+readelf -l a.out | grep --color=auto ': /lib'
+printf "Does the above line say \"Requesting program interpreter\"? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure we use correct start files {{{
+grep --color=auto -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+printf "Do the above lines say '/usr/lib/../lib/crt*.o succeeded'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Verify the compiler is searching for the correct header files {{{
+grep --color=auto -B1 '^ /usr/include' dummy.log
+printf "Do the above lines say 'include search starts here, /usr/include'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Verify if the new linker is being used with the correct search paths {{{
+grep --color=auto 'SEARCH.*/usr/lib' dummy.log | sed 's/; /\n/g'
+printf "Do the above lines have /usr/lib and /lib as the dirs? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure we're using the correct libc {{{
+grep --color=auto "/lib.*/libc.so.6 " dummy.log
+printf "Does the above line say 'attempt to open ... succeeded'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure glibc is using the correct dynamic linker {{{
+grep --color=auto found dummy.log
+printf "Does the above line say 'found {,at /lib/}ld-linux-x86-64.so.2? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+printf "Everything works correctly, removing dummy test files\n"
+rm -v dummy.log dummy.c a.out
+
+# }}}
+
+# Zlib {{{
+
+make_zlib()
+{
+	./configure --prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move the shared library into /lib, and recreate the symlink in /usr/lib
+	mv -v /usr/lib/libz.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libz.so) /usr/lib/libz.so
+}
+
+pretty_make					\
+	"zlib"					\
+	"zlib-1.2.11.tar.xz"	\
+	"make_zlib"
+
+# }}}
+
+# Bzip2 {{{
+
+make_bzip2()
+{
+	# Patch to install documentation
+	patch -Np1 -i ../bzip2-1.0.8-install_docs-1.patch
+
+	# Ensures the installation of symbolic links is relative
+	sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+	# Ensures man pages are installed into the correct location
+	sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+
+	# Prepare for compilation
+	make -f Makefile-libbz2_so
+	make clean
+
+	pretty_log "Compiling"
+	make $MAKEFLAGS
+	pretty_log "Compiling done"
+
+	pretty_log "Installing"
+	make PREFIX=/usr install
+
+	# Install some final things and clean things up
+	cp -v bzip2-shared /bin/bzip2
+	cp -av libbz2.so* /lib
+	ln -sv ../../lib/libbz2.so.1.0 /usr/lib/libbz2.so
+	rm -v /usr/bin/{bunzip2,bzcat,bzip2}
+	ln -sv bzip2 /bin/bunzip2
+	ln -sv bzip2 /bin/bzcat
+}
+
+pretty_make					\
+	"bzip2"					\
+	"bzip2-1.0.8.tar.gz"	\
+	"make_bzip2"
+
+# }}}
+
+# Xz {{{
+
+make_xz()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--docdir=/usr/share/doc/xz-5.2.4
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	mv -v /usr/bin/{lzma,unlzma,lzcat,xz,unxz,xzcat} /bin
+	mv -v /usr/lib/liblzma.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/liblzma.so) /usr/lib/liblzma.so
+}
+
+pretty_make					\
+	"xz"					\
+	"xz-5.2.4.tar.xz"		\
+	"make_xz"
+
+# }}}
+
+# File {{{
+
+make_file()
+{
+	./configure --prefix=/usr
+	make $MAKEFLAGS
+	make check
+	make install
+}
+
+pretty_make					\
+	"file"					\
+	"file-5.38.tar.gz"		\
+	"make_file"
+
+# }}}
+
+# Readline {{{
+
+make_readline()
+{
+	# Prevent readline reinstall from creating .old libraries
+	# They could cause a linking bug in ldconfig
+	sed -i '/MV.*old/d' Makefile.in
+	sed -i '/{OLDSUFF}/c:' support/shlib-install
+
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--docdir=/usr/share/doc/readline-8.0
+	make $MAKEFLAGS SHLIB_LIBS="-L/tools/lib -lncursesw"
+
+	pretty_log "Installing"
+	make SHLIB_LIBS="-L/tools/lib -libncursesw" install
+
+	# Move dynamic libraries, fix permissions, fix symlinks
+	mv -v /usr/lib/lib{readline,history}.so.* /lib
+	chmod -v u+w /lib/lib{readline,history}.so.*
+	ln -sfv ../../lib/$(readlink /usr/lib/libreadline.so) /usr/lib/libreadline.so
+	ln -sfv ../../lib/$(readlink /usr/lib/libhistory.so) /usr/lib/libhistory.so
+
+	# Install documentation
+	install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-8.0
+}
+
+pretty_make					\
+	"readline"				\
+	"readline-8.0.tar.gz"	\
+	"make_readline"
+
+# }}}
+
+# M4 {{{
+
+make_m4()
+{
+	# Make fixes required by glibc 2.28
+	sed -i 's/IO_ftrylockfile/IO_EOF_SEEN/' lib/*.c
+	echo "#define _IO_IN_BACKUP 0x100" >> lib/stdio-impl.h
+
+	./configure --prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"m4"					\
+	"m4-1.4.18.tar.xz"		\
+	"make_m4"
+
+# }}}
+
+# Bc {{{
+
+make_bc()
+{
+	PREFIX=/usr CC=gcc CFLAGS="-std=c99" ./configure.sh -G -O3
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make test
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"bc"					\
+	"bc-2.5.3.tar.gz"		\
+	"make_bc"
+
+# }}}
+
+# Verify that PTYs are working properly in chroot {{{
+expect -c "spawn ls"
+printf "Does the above line say 'spawn ls'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting..."
+	exit
+fi
+# }}}
+# Binutils {{{
+
+make_binutils()
+{
+	# Remove test that prevents the tests from finishing
+	sed -i '/@\tincremental_copy/d' gold/testsuite/Makefile.in
+
+	# Work in separate build directory
+	mkdir -v build && cd build
+
+	../configure 				\
+		--prefix=/usr			\
+		--enable-gold			\
+		--enable-ld=default		\
+		--enable-plugins		\
+		--enable-shared			\
+		--disable-werror		\
+		--enable-64-bit-bfd		\
+		--with-system-zlib
+	make $MAKEFLAGS tooldir=/usr
+
+	pretty_test_start
+	make -k check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make tooldir=/usr install
+}
+
+pretty_make					\
+	"binutils"				\
+	"binutils-2.34.tar.xz"	\
+	"make_binutils"
+
+# }}}
+# Check binutils log file! {{{
+printf "Go check the binutils log file, the make check is critical!\n"
+printf "(press enter when you return)"
+read CONTINUE
+printf "Did it work okay? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting..."
+	exit
+fi
+# }}}
+
+# GMP {{{
+
+make_gmp()
+{
+	./configure 			\
+		--prefix=/usr		\
+		--enable-cxx		\
+		--disable-static	\
+		--docdir=/usr/share/doc/gmp-6.2.0
+
+	# Compile and generate html documentation
+	make $MAKEFLAGS
+	make $MAKEFLAGS html
+
+	# This test is critical! Checking the output is automated.
+	pretty_test_start
+	make check 2>&1 | tee gmp-check-log
+	pretty_test_end
+	# Check if tests passed
+	passes="$(awk '/# PASS:/{total+=$3} ; END{print total}' gmp-check-log)"
+	pretty_log "Tests passed (should be 190): $passes"
+
+	pretty_log "Installing"
+	make install
+	make install-html
+}
+
+pretty_make					\
+	"gmp"					\
+	"gmp-6.2.0.tar.xz"		\
+	"make_gmp"
+
+# }}}
+# Check GMP log file! {{{
+printf "Go check the GMP log file, the make check is critical!\n"
+printf "(press enter when you return)"
+read CONTINUE
+printf "Did it work okay? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting..."
+	exit
+fi
+# }}}
+
+# MPFR {{{
+
+make_mpfr()
+{
+	./configure 				\
+		--prefix=/usr			\
+		--disable-static		\
+		--enable-thread-safe	\
+		--docdir=/usr/share/doc/mpfr-4.0.2
+
+	# Compile and generate html documentation
+	make $MAKEFLAGS
+	make $MAKEFLAGS html
+
+	# This test is critical!
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	make install-html
+}
+
+pretty_make					\
+	"mpfr"					\
+	"mpfr-4.0.2.tar.xz"		\
+	"make_mpfr"
+
+# }}}
+# Check MPFR log file! {{{
+printf "Go check the MPFR log file, the make check is critical!\n"
+printf "(press enter when you return)"
+read CONTINUE
+printf "Did it work okay? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting..."
+	exit
+fi
+# }}}
+
+# MPC {{{
+
+make_mpc()
+{
+	./configure 				\
+		--prefix=/usr			\
+		--disable-static		\
+		--docdir=/usr/share/doc/mpc-1.1.0
+
+	# Compile and generate html documentation
+	make $MAKEFLAGS
+	make $MAKEFLAGS html
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	make install-html
+}
+
+pretty_make					\
+	"mpc"					\
+	"mpc-1.1.0.tar.gz"		\
+	"make_mpc"
+
+# }}}
+
+# Attr {{{
+
+make_attr()
+{
+	./configure 			\
+		--prefix=/usr		\
+		--bindir=/bin		\
+		--disable-static	\
+		--sysconfdir=/etc	\
+		--docdir=/usr/share/doc/attr-2.4.48
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move library to /lib and fix symlink
+	mv -v /usr/lib/libattr.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
+}
+
+pretty_make					\
+	"attr"					\
+	"attr-2.4.48.tar.gz"	\
+	"make_attr"
+
+# }}}
+
+# Acl {{{
+
+make_acl()
+{
+	./configure					\
+		--prefix=/usr			\
+		--bindir=/bin			\
+		--disable-static		\
+		--libexecdir=/usr/lib	\
+		--docdir=/usr/share/doc/acl-2.2.53
+	make $MAKEFLAGS
+
+	# Can't do this now, because it needs coreutils to be built
+	#pretty_test_start
+	#make check
+	#pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move library to /lib and fix symlink
+	mv -v /usr/lib/libacl.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libacl.so) /usr/lib/libacl.so
+}
+
+pretty_make					\
+	"acl"					\
+	"acl-2.2.53.tar.gz"		\
+	"make_acl"
+
+# }}}
+
+# Shadow {{{
+
+make_shadow()
+{
+	# Disable the installation of groups, since coreutils has a better one
+	sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+	# Don't install duplicate man pages
+	find man -name Makefile.in -exec sed -i 's/groups\.1 / /' {} \;
+	find man -name Makefile.in -exec sed -i 's/getspnam\.3 / /' {} \;
+	find man -name Makefile.in -exec sed -i 's/passwd\.5 / /' {} \;
+
+	# Change encryption method to sha512, and fix mail location
+	sed -i -e 's@#ENCRYPT_METHOD DES@ENCRYPT_METHOD SHA512@' \
+		-e 's@/var/spool/mail@/var/mail@' etc/login.defs
+
+	# Make first number generated by useradd 1000
+	sed -i 's/1000/999/' etc/useradd
+
+	./configure				\
+		--sysconfdir=/etc	\
+		--with-group-name-max-length=32
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+
+	# Setting up shadow
+	pwconv
+	grpconv
+}
+
+pretty_make					\
+	"shadow"				\
+	"shadow-4.8.1.tar.xz"	\
+	"make_shadow"
+
+# }}}
+# Set root password {{{
+printf "Set the root user's new password\n"
+passwd root
+# }}}
+
+# GCC {{{
+
+make_gcc()
+{
+	# Change default dir name for 64 bit libraries on x86_64
+	case $(uname -m) in
+		x86_64)
+			sed -e '/m64=/s/lib64/lib/' \
+				-i.orig gcc/config/i386/t-linux64
+			;;
+	esac
+
+	# Fix the problem introduced in glibc-2.31
+	sed -e '1161 s|^|//|' \
+		-i libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
+
+	# Go into extra build dir
+	mkdir -v build && cd build
+
+	SED=sed							\
+	../configure					\
+		--prefix=/usr				\
+		--enable-languages=c,c++	\
+		--disable-multilib			\
+		--disable-bootstrap			\
+		--with-system-zlib
+
+	make $MAKEFLAGS
+
+	# Critical test suite!
+	# Increase stack size because one of the gcc tests will blow it
+	ulimit -s 32768
+	# Test the results as a non-privileged user
+	chown -Rv nobody .
+	pretty_test_start
+	su nobody -s /bin/bash -c "PATH=$PATH make -k check"
+	pretty_test_end
+	pretty_log "Test output:"
+	../contrib/test_summary
+	pretty_log "Test summaries only:"
+	../contrib/test_summary | grep -A7 Summ
+	# Fix permissions back to root
+	chown -Rv root:root .
+
+	pretty_log "Installing"
+	make install
+	# Remove unneeded directory
+	rm -rf /usr/lib/gcc/$(gcc -dumpmachine)/9.2.0/include-fixed/bits/
+
+	# "Historical" symlink for FHS
+	ln -sv ../usr/bin/cpp /lib
+	# cc symlink
+	ln -sv gcc /usr/bin/cc
+	# Compatibility symlink to build with "Link Time Optimization"
+	install -v -dm755 /usr/lib/bfd-plugins
+	ln -sfv ../../libexec/gcc/$(gcc -dumpmachine)/9.2.0/liblto_plugin.so \
+		/usr/lib/bfd-plugins
+}
+
+pretty_make					\
+	"gcc"					\
+	"gcc-9.2.0.tar.xz"		\
+	"make_gcc"
+
+# }}}
+# Bunch of tests to validate linking and everything {{{
+
+echo 'int main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+
+# Test linker {{{
+pretty_log "Test that new compiling and linking is working..."
+readelf -l a.out | grep --color=auto ': /lib'
+printf "Does the above line say \"Requesting program interpreter\"? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure we use correct start files {{{
+grep --color=auto -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+printf "Do the above 3 lines say '/usr/lib/../lib/crt*.o succeeded'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Verify the compiler is searching for the correct header files {{{
+grep --color=auto -B4 '^ /usr/include' dummy.log
+printf "These dirs should be listed:\n"
+printf "/usr/lib/gcc/tgt/9.2.0/include, /usr/local/include,\n"
+printf "/usr/lib/gcc/tgt/9.2.0/include-fixed, /usr/include\n"
+printf "Do the above lines have these directories? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Verify if the new linker is being used with the correct search paths {{{
+grep --color=auto 'SEARCH.*/usr/lib' dummy.log | sed 's/; /\n/g'
+printf "The above lines should have a bunch of directories.\n"
+printf "usr/tgt/lib64, usr/local/lib64, lib64, usr/lib64, usr/tgt/lib,\n"
+printf "usr/local/lib, lib, usr/lib.\n"
+printf "Look right? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure we're using the correct libc {{{
+grep --color=auto "/lib.*/libc.so.6 " dummy.log
+printf "Does the above line say 'attempt to open ... succeeded'? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+# Make sure glibc is using the correct dynamic linker {{{
+grep --color=auto found dummy.log
+printf "Does the above line say 'found {,at /lib/}ld-linux-x86-64.so.2? (Y/n): "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'y' ] || [ "$CONTINUE" = 'Y' ]; then
+	echo "Moving along then"
+else
+	echo "Alright, figure it out. Quitting (without deleting dummy.c, dummy.log or a.out)..."
+	exit
+fi
+# }}}
+
+printf "Everything works correctly, removing dummy test files\n"
+rm -v dummy.log dummy.c a.out
+
+# Move a misplaced file
+mkdir -pv /usr/share/gdb/auto-load/usr/lib
+mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
+# }}}
+
+# Pkg-config {{{
+
+make_pkg_config()
+{
+	./configure					\
+		--prefix=/usr			\
+		--with-internal-glib	\
+		--disable-host-tool		\
+		--docdir=/usr/share/doc/pkg-config-0.29.2
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make						\
+	"pkg-config"				\
+	"pkg-config-0.29.2.tar.gz"	\
+	"make_pkg_config"
+
+# }}}
+
+# Ncurses {{{
+
+make_ncurses()
+{
+	# Disable the installation of a static library
+	sed -i '/LIBTOOL_INSTALL/d' c++/Makefile.in
+
+	./configure					\
+		--prefix=/usr			\
+		--mandir=/usr/share/man	\
+		--with-shared			\
+		--without-debug			\
+		--without-normal		\
+		--enable-pc-files		\
+		--enable-widec			\
+	make $MAKEFLAGS
+
+	# The test suite can't be run until the package is installed
+	#pretty_test_start
+	#make check
+	#pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move shared libraries to /lib and fix symlink
+	mv -v /usr/lib/libncursesw.so.6* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libncursesw.so) /usr/lib/libncursesw.so
+
+	# Trick programs that ask for non-wide character libraries into using wide
+	# character ones by using linker scripts and symlinks
+	for lib in ncurses form panel menu ; do
+		rm -vf						/usr/lib/lib${lib}.so
+		echo "INPUT(-l${lib}w)" >	/usr/lib/lib${lib}.so
+		ln -sfv ${lib}w.pc			/usr/lib/pkgconfig/${lib}.pc
+	done
+
+	# Make sure -lcurses still works
+	rm -vf						/usr/lib/libcursesw.so
+	echo "INPUT(-lncursesw)" >	/usr/lib/libcursesw.so
+	ln -sfv libncurses.so		/usr/lib/libcurses.so
+
+	# Install the ncurses documentation
+	mkdir -v /usr/share/doc/ncurses-6.2
+	cp -v -R doc/* /usr/share/doc/ncurses-6.2
+}
+
+pretty_make					\
+	"ncurses"				\
+	"ncurses-6.2.tar.gz"	\
+	"make_ncurses"
+
+# }}}
+
+# Libcap {{{
+
+make_libcap()
+{
+	# Prevent two static libraries from being installed
+	sed -i '/install.*STA...LIBNAME/d' libcap/Makefile
+
+	make $MAKEFLAGS lib=lib
+
+	pretty_test_start
+	make test
+	pretty_test_end
+
+	pretty_log "Installing"
+	make lib=lib install
+	chmod -v 755 /lib/libcap.so.2.31
+}
+
+pretty_make					\
+	"libcap"				\
+	"libcap-2.31.tar.xz"	\
+	"make_libcap"
+
+# }}}
+
+# Sed {{{
+
+make_sed()
+{
+	# Look for a package in tools instead of usr
+	sed -i 's/usr/tools/' build-aux/help2man
+	# Remove failing test
+	sed -i s'/testsuite.panic-tests.sh//' Makefile.in
+
+	./configure				\
+		--prefix=/usr		\
+		--bindir=/bin
+	make $MAKEFLAGS
+	# Generate html documentation
+	make html
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	install -d -m755 /usr/share/doc/sed-4.8
+	install -m644 doc/sed.html /usr/share/doc/sed-4.8
+}
+
+pretty_make					\
+	"sed"					\
+	"sed-4.8.tar.xz"		\
+	"make_sed"
+
+# }}}
+
+# Psmisc {{{
+
+make_psmisc()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+
+	# killall and fuser need to be in /bin according to FHS
+	mv -v /usr/bin/fuser /bin
+	mv -v /usr/bin/killall /bin
+}
+
+pretty_make					\
+	"psmisc"				\
+	"psmisc-23.2.tar.xz"	\
+	"make_psmisc"
+
+# }}}
+
+# Iana-Etc {{{
+
+make_iana_etc()
+{
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"iana-etc"				\
+	"iana-etc-2.30.tar.bz2"	\
+	"make_iana_etc"
+
+# }}}
+
+# Bison {{{
+
+make_bison()
+{
+	./configure				\
+		--prefix=/usr		\
+		--docdir=/usr/share/doc/bison-3.5.2
+	make $MAKEFLAGS
+
+	# We can't test now because a circular dependency between bison and flex
+	# with their checks. If you want you can rebuild this after flex to try the
+	# checks.
+	#pretty_test_start
+	#make check
+	#pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"bison"					\
+	"bison-3.5.2.tar.xz"	\
+	"make_bison"
+
+# }}}
+
+# Flex {{{
+
+make_flex()
+{
+	# Fix problem introduced with glibc-2.26
+	sed -i "/math.h/a #include <malloc.h>" src/flexdef.h
+
+	# The build assumes that help2man is present (which makes a man page from
+	# --help output), but it isn't, so we use an environment variable to skip
+	# it.
+	HELP2MAN=/tools/bin/true	\
+	./configure					\
+		--prefix=/usr			\
+		--docdir=/usr/share/doc/flex-2.6.4
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Flex can emulate lex, and is better, so symlink it
+	ln -sv flex /usr/bin/lex
+}
+
+pretty_make					\
+	"flex"					\
+	"flex-2.6.4.tar.gz"		\
+	"make_flex"
+
+# }}}
+
+# Grep {{{
+
+make_grep()
+{
+	./configure				\
+		--prefix=/usr		\
+		--bindir=/bin
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"grep"					\
+	"grep-3.4.tar.xz"		\
+	"make_grep"
+
+# }}}
+
+# Bash {{{
+
+make_bash()
+{
+	# Patch in some upstream fixes
+	patch -Np1 -i ../bash-5.0-upstream_fixes-1.patch
+
+	./configure								\
+		--prefix=/usr						\
+		--docdir=/usr/share/doc/bash-5.0	\
+		--without-bash-malloc				\
+		--with-installed-readline
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# Run the tests as "nobody"
+	chown -Rv nobody .
+	su nobody -s /bin/bash -c "PATH=$PATH HOME=/home make tests"
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Move main exe to /bin
+	mv -vf /usr/bin/bash /bin
+}
+
+pretty_make					\
+	"bash"					\
+	"bash-5.0.tar.gz"		\
+	"make_bash"
+
+# }}}
+
+# Libtool {{{
+
+make_libtool()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make TESTSUITEFLAGS=-j2 check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"libtool"				\
+	"libtool-2.4.6.tar.xz"	\
+	"make_libtool"
+
+# }}}
+
+# GDBM {{{
+
+make_gdbm()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--enable-libgdbm-compat
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"gdbm"					\
+	"gdbm-1.18.1.tar.gz"	\
+	"make_gdbm"
+
+# }}}
+
+# Gperf {{{
+
+make_gperf()
+{
+	./configure				\
+		--prefix=/usr		\
+		--docdir=/usr/share/doc/gperf-3.1
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# Tests fail if using more than one core
+	make -j1 check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"gperf"					\
+	"gperf-3.1.tar.gz"		\
+	"make_gperf"
+
+# }}}
+
+# Expat {{{
+
+make_expat()
+{
+	# Fix a problem the tests have with the LFS environment
+	sed -i 's|usr/bin/env |bin/|' run.sh.in
+
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--docdir=/usr/share/doc/expat-2.2.9
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Install documentation
+	install -v -m644 doc/*.{html,png,css} /usr/share/doc/expat-2.2.9
+}
+
+pretty_make					\
+	"expat"					\
+	"expat-2.2.9.tar.xz"	\
+	"make_expat"
+
+# }}}
+
+# Inetutils {{{
+
+make_inetutils()
+{
+	./configure					\
+		--prefix=/usr			\
+		--localstatedir=/var	\
+		--disable-logger		\
+		--disable-whois			\
+		--disable-rcp			\
+		--disable-rexec			\
+		--disable-rlogin		\
+		--disable-rsh			\
+		--disable-servers
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move programs in case /usr isn't accessable
+	mv -v /usr/bin/{hostname,ping,ping6,traceroute} /bin
+	mv -v /usr/bin/ifconfig /sbin
+}
+
+pretty_make						\
+	"inetutils"					\
+	"inetutils-1.9.4.tar.xz"	\
+	"make_inetutils"
+
+# }}}
+
+# Make hosts file (needed by perl) {{{
+cat > /etc/hosts << "EOF"
+# See hosts(5) for details
+# <ip-address>	<hostname>
+127.0.0.1		localhost
+127.0.1.1		lfs.home.com
+EOF
+# }}}
+# Perl {{{
+
+make_perl()
+{
+	# Tell perl to use system libraries instead of local copies
+	export BUILD_ZLIB=False
+	export BUILD_BZIP2=0
+
+	sh Configure -des					\
+		-Dprefix=/usr					\
+		-Dvendorprefix=/usr				\
+		-Dman1dir=/usr/share/man/man1	\
+		-Dman3dir=/usr/share/man/man3	\
+		-Dpager="/usr/bin/less -isR"	\
+		-Duseshrplib					\
+		-Dusethreads
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make $MAKEFLAGS test
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"perl"					\
+	"perl-5.30.1.tar.xz"	\
+	"make_perl"
+
+# }}}
+
+# XML::Parser {{{
+
+make_xml_parser()
+{
+	perl Makefile.PL
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make test
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make						\
+	"xml_parser"				\
+	"XML-Parser-2.46.tar.gz"	\
+	"make_xml_parser"
+
+# }}}
+
+# Intltool {{{
+
+make_intltool()
+{
+	# Fix warning caused by perl-5.22 and later
+	sed -i 's:\\\${:\\\$\\{:' intltool-update.in
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.51.0/I18N-HOWTO
+}
+
+pretty_make						\
+	"intltool"					\
+	"intltool-0.51.0.tar.gz"	\
+	"make_intltool"
+
+# }}}
+
+# Autoconf {{{
+
+make_autoconf()
+{
+	# Fix bug generated by perl-5.28
+	sed '361 s/{/\\{/' -i bin/autoscan.in
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	# The test suite is currently broken by bash-5 and libtool-2.4.3
+	#pretty_test_start
+	#make check
+	#pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"autoconf"				\
+	"autoconf-2.69.tar.xz"	\
+	"make_autoconf"
+
+# }}}
+
+# Automake {{{
+
+make_automake()
+{
+	./configure				\
+		--prefix=/usr		\
+		--docdir=/usr/share/doc/automake-1.16.1
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# The tests have internal timers, j4 speeds it up significantly
+	make -j4 check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make						\
+	"automake"					\
+	"automake-1.16.1.tar.xz"	\
+	"make_automake"
+
+# }}}
+
+# Kmod {{{
+
+make_kmod()
+{
+	./configure					\
+		--prefix=/usr			\
+		--bindir=/bin			\
+		--sysconfdir=/etc		\
+		--with-rootlibdir=/lib	\
+		--with-xz				\
+		--with-zlib				\
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+
+	# Create symlinks for compatibility with Module-Init-Tools (the package
+	# that previously handled the kernel modules)
+	for target in depmod insmod lsmod modinfo modprobe rmmod; do
+		ln -sfv ../bin/knod /sbin/$target
+	done
+}
+
+pretty_make					\
+	"kmod"					\
+	"kmod-26.tar.xz"		\
+	"make_kmod"
+
+# }}}
+
+# Gettext {{{
+
+make_gettext()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--docdir=/usr/share/doc/gettext-0.20.1
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	chmod -v 0755 /usr/lib/preloadable_libintl.so
+}
+
+pretty_make					\
+	"gettext"				\
+	"gettext-0.20.1.tar.xz"	\
+	"make_gettext"
+
+# }}}
+
+# Libelf {{{
+
+make_libelf()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-debuginfod
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make -C libelf install
+	install -vm644 config/libelf.pc /usr/lib/pkgconfig
+	rm /usr/lib/libelf.a
+}
+
+pretty_make						\
+	"libelf"					\
+	"elfutils-0.178.tar.bz2"	\
+	"make_libelf"
+
+# }}}
+
+# Libffi {{{
+
+make_libffi()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-static	\
+		--with-gcc-arch=native
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"libffi"				\
+	"libffi-3.3.tar.gz"		\
+	"make_libffi"
+
+# }}}
+
+# OpenSSL {{{
+
+make_openssl()
+{
+	./config					\
+		--prefix=/usr			\
+		--openssldir=/etc/ssl	\
+		--libdir=lib			\
+		shared					\
+		zlib-dynamic
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make test
+	pretty_test_end
+
+	pretty_log "Installing"
+	sed -i '/INSTALL_LIBS/s/libcrypto.a libssl.a//' Makefile
+	make MANSUFFIX=ssl install
+
+	# Install documentation
+	mv -v /usr/share/doc/openssl /usr/share/doc/openssl-1.1.1d
+	cp -vfr doc/* /usr/share/doc/openssl-1.1.1d
+}
+
+pretty_make					\
+	"openssl"				\
+	"openssl-1.1.1d.tar.gz"	\
+	"make_openssl"
+
+# }}}
+
+# Python {{{
+
+make_python()
+{
+	./configure				\
+		--prefix=/usr		\
+		--enable-shared		\
+		--with-system-expat	\
+		--with-system-ffi	\
+		--with-ensurepip=yes
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+	chmod -v 755 /usr/lib/libpython3.8.so
+	chmod -v 755 /usr/lib/libpython3.so
+	ln -sfv pip3.8 /usr/bin/pip3
+
+	# Install documentation
+	install -v -dm755 /usr/share/doc/python-3.8.1/html
+	tar --strip-components=1				\
+		--no-same-owner						\
+		--no-same-permissions				\
+		-C /usr/share/doc/python-3.8.1/html	\
+		-xvf ../python-3.8.1-docs-html.tar.bz2
+}
+
+pretty_make					\
+	"python"				\
+	"Python-3.8.1.tar.xz"	\
+	"make_python"
+
+# }}}
+
+# Ninja {{{
+
+make_ninja()
+{
+	# Add capability for ninja to read from an environment variable for
+	# parallel build jobs number
+	sed -i '/int Guess/a \
+	int		j = 0; \
+	char	*jobs = getenv("NINJAJOBS"); \
+	if (jobs != NULL) j = atoi(jobs); \
+	if (j > 0) return j;' src/ninja.cc
+
+	python3 configure.py --bootstrap
+
+	pretty_test_start
+	./ninja ninja_test
+	./ninja_test --gtest_filter=-SubprocessTest.SetWithLots
+	pretty_test_end
+
+	pretty_log "Installing"
+	install -vm755 ninja /usr/bin
+	install -vDm644 misc/bash-completion /usr/share/bash-completion/completions/ninja
+	install -vDm misc/zsh-completion /usr/share/zsh/site-functions/_ninja
+}
+
+pretty_make					\
+	"ninja"					\
+	"ninja-1.10.0.tar.gz"	\
+	"make_ninja"
+
+# }}}
+
+# Meson {{{
+
+make_meson()
+{
+	python3 setup.py build
+
+	pretty_log "Installing"
+	python3 setup.py install --root=dest
+	cp -rv dest/* /
+}
+
+pretty_make					\
+	"meson"					\
+	"meson-0.53.1.tar.gz"	\
+	"make_meson"
+
+# }}}
+
+# Coreutils {{{
+
+make_coreutils()
+{
+	# Patch internationalization-related bugs
+	patch -Np1 -i ../coreutils-8.31-i18n-1.patch
+
+	# Suppress a test which can loop forever on some machines
+	sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.mk
+
+	autoreconf -fiv
+	FORCE_UNSAFE_CONFIGURE=1 ./configure	\
+		--prefix=/usr						\
+		--unable-no-install-program=kill,uptime
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make NON_ROOT_USERNAME=nobody check-root
+	# Certain tests require the user be a member of more than one group
+	# So let's add a fake group for 'nobody' to be in
+	echo "dummy:x:1000:nobody" >> /etc/group
+	# Allow non-root user to compile and run the tests
+	chown -Rv nobody .
+	# Pass in the path to make sure the user has /tools/bin
+	su nobody -s /bin/bash \
+		-c "PATH=$PATH make RUN_EXPENSIVE_TESTS=yes check"
+	# Remove the temporary group
+	sed -i '/dummy/d' /etc/group
+	# Put permissions back
+	chown -Rv root:root .
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Move programs to locations specified by FHS
+	mv -v /usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo,false,ln} /bin
+	mv -v /usr/bin/{ls,mkdir,mknod,mv,pwd,rm,rmdir,stty,sync,true,uname} /bin
+	mv -v /usr/bin/chroot /usr/sbin
+	mv -v /usr/share/man/man1/chrot.1 /usr/share/man/man8/chroot.8
+	sed -i s/\"1\"/\"8\"/1 /usr/share/man/man8/chroot.8
+
+	# /usr may not be available in the early and late stages of booting, so
+	# some more binaries required by bootscripts need to be moved to /bin.
+	mv -v /usr/bin/{head,nice,sleep,touch} /bin
+}
+
+pretty_make					\
+	"coreutils"				\
+	"coreutils-8.31.tar.xz"	\
+	"make_coreutils"
+
+# }}}
+
+# Check {{{
+
+make_check()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make docdir=/usr/share/doc/check-0.14.0 install
+	sed -i '1 s/tools/usr/' /usr/bin/checkmk
+}
+
+pretty_make					\
+	"check"					\
+	"check-0.14.0.tar.gz"	\
+	"make_check"
+
+# }}}
+
+# Diffutils {{{
+
+make_diffutils()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"diffutils"				\
+	"diffutils-3.7.tar.xz"	\
+	"make_diffutils"
+
+# }}}
+
+# Gawk {{{
+
+make_gawk()
+{
+	# Ensure some unneeded files aren't installed
+	sed -i 's/extras//' Makefile.in
+
+	./configure				\
+		--prefix=/usr		\
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Install documentation
+	mkdir -v /usr/share/doc/gawk-5.0.1
+	cp -v doc/{awkforai.txt,*.{eps,pdf,jpg}} /usr/share/doc/gawk-5.0.1
+}
+
+pretty_make					\
+	"gawk"					\
+	"gawk-5.0.1.tar.xz"		\
+	"make_gawk"
+
+# }}}
+
+# Findutils {{{
+
+make_findutils()
+{
+	./configure				\
+		--prefix=/usr		\
+		--localstatedir=/var/lib/locate
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Move find to FHS /bin directory, since bootscripts may depend on it
+	mv -v /usr/bin/find /bin
+	# Modify updatedb to use an explicit path
+	sed -i 's|find:=${BINDIR}|find:=/bin|' /usr/bin/updatedb
+}
+
+pretty_make					\
+	"findutils"				\
+	"findutils-4.7.0.tar.xz"		\
+	"make_findutils"
+
+# }}}
+
+# Groff {{{
+
+make_groff()
+{
+	# Groff expects the PAGE variable to contain the default paper size. To
+	# change this later, use the /etc/papersize file.
+	PAGE=letter ./configure	\
+		--prefix=/usr
+	# Does not support parallel build.
+	make -j1
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"groff"					\
+	"groff-1.22.4.tar.gz"	\
+	"make_groff"
+
+# }}}
+
+# GRUB {{{
+
+make_grub()
+{
+	./configure				\
+		--prefix=/usr		\
+		--sbindir=/sbin		\
+		--sysconfdir=/etc	\
+		--disable-efiemu	\
+		--disable-werror
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+	mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
+}
+
+pretty_make					\
+	"grub"					\
+	"grub-2.04.tar.xz"		\
+	"make_grub"
+
+# }}}
+
+# Less {{{
+
+make_less()
+{
+	./configure				\
+		--prefix=/usr		\
+		--sysconfdir=/etc
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"less"					\
+	"less-551.tar.gz"		\
+	"make_less"
+
+# }}}
+
+# Gzip {{{
+
+make_gzip()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	# Needs to be in /bin, probably for FHS reasons
+	mv -v /usr/bin/gzip /bin
+}
+
+pretty_make					\
+	"gzip"					\
+	"gzip-1.10.tar.xz"		\
+	"make_gzip"
+
+# }}}
+
+# Zstd {{{
+
+make_zstd()
+{
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make prefix=/usr install
+
+	# Remove static library
+	rm -v /usr/lib/libzstd.a
+	# Move shared library to /lib, and fix it's symlink
+	mv -v /usr/lib/libzstd.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libzstd.so) /usr/lib/libzstd.so
+}
+
+pretty_make					\
+	"zstd"					\
+	"zstd-1.4.4.tar.gz"		\
+	"make_zstd"
+
+# }}}
+
+# IPRoute2 {{{
+
+make_iproute2()
+{
+	# Prevent a manpage from being installed for a program that isn't going to
+	# be built
+	sed -i /ARPD/d Makefile
+	rm -vf man/man8/arpd.8
+
+	# Disable building modules which require iptables
+	sed -i 's/.m_ipt.o//' tc/Makefile
+
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make DOCDIR=/usr/share/doc/iproute2-5.5.0 install
+}
+
+pretty_make					\
+	"iproute2"				\
+	"iproute2-5.5.0.tar.xz"	\
+	"make_iproute2"
+
+# }}}
+
+# Kbd {{{
+
+make_kbd()
+{
+	# Fix the consistency of the backspace and delete keys
+	# This makes the backspace key generate the code 127, and the delete key
+	# generate a well-known escape sequence (I don't know what it is yet but I
+	# imagine it's something like ^H)
+	patch -Np1 -i ../kbd-2.2.0-backspace-1.patch
+
+	# Remove redundant 'resizecons' manpage & program, which requires a defunct
+	# library. You should use setfont instead.
+	sed -i 's/\(RESIZEICONS_PROGS=\)yes/\1no/g' configure
+	sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+
+	PKG_CONFIG_PATH=/tools/lib/pkgconfig	\
+	./configure								\
+		--prefix=/usr						\
+		--disable-vlock
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Install the documentation
+	mkdir -v /usr/share/doc/kbd-2.2.0
+	cp -R -v docs/doc/* /usr/share/doc/kbd-2.2.0
+}
+
+pretty_make					\
+	"kbd"					\
+	"kbd-2.2.0.tar.xz"		\
+	"make_kbd"
+
+# }}}
+
+# Libpipeline {{{
+
+make_libpipeline()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make						\
+	"libpipeline"				\
+	"libpipeline-1.5.2.tar.gz"	\
+	"make_libpipeline"
+
+# }}}
+
+# Make {{{
+
+make_make()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# The test suite needs the environment variable to tell it where the perl
+	# files are for the tests
+	make PERL5LIB=$PWD/tests/ check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"make"					\
+	"make-4.3.tar.gz"		\
+	"make_make"
+
+# }}}
+
+# Patch {{{
+
+make_patch()
+{
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"patch"					\
+	"patch-2.7.6.tar.xz"	\
+	"make_patch"
+
+# }}}
+
+# Man-DB {{{
+
+make_man_db()
+{
+	./configure									\
+		--prefix=/usr							\
+		--docdir=/usr/share/doc/man-db-2.9.0	\
+		--sysconfdir=/etc						\
+		--disable-setuid						\
+		--enable-cache-owner=bin				\
+		--with-browser=/usr/bin/lynx			\
+		--with-vgrind=/usr/bin/vgrind			\
+		--with-grap=/usr/bin/grap				\
+		--with-systemdtmpfilesdir=				\
+		--with-systemdsystemunitdir=
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"man_db"				\
+	"man-db-2.9.0.tar.xz"	\
+	"make_man_db"
+
+# }}}
+
+# Tar {{{
+
+make_tar()
+{
+	# Force the test for mknod to be run as root. This is generally dangerous,
+	# but since this system is only partially built it's okay.
+	FORCE_UNSAFE_CONFIGURE=1	\
+	./configure					\
+		--prefix=/usr			\
+		--bindir=/bin
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+	make -C doc install-html docdir=/usr/share/doc/tar-1.32
+}
+
+pretty_make					\
+	"tar"					\
+	"tar-1.32.tar.xz"		\
+	"make_tar"
+
+# }}}
+
+# Texinfo {{{
+
+make_texinfo()
+{
+	./configure				\
+		--prefix=/usr		\
+		--disable-static
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Install components belonging in a TeX installation
+	make TEXMF=/usr/share/texmf install-tex
+}
+
+pretty_make					\
+	"texinfo"				\
+	"texinfo-6.7.tar.xz"	\
+	"make_texinfo"
+
+# }}}
+
+# Vim {{{
+
+make_vim()
+{
+	# Set the default location of the vimrc file
+	echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+	./configure				\
+		--prefix=/usr
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# Set up tests to be done as 'nobody'
+	chown -Rv nobody .
+	# The test suite outputs a lot of binary data to the screen.
+	su nobody -s /bin/bash -c "LANG=en_US.UTF-8 make -j2 test" &> vim-test.log
+	pretty_log "Check the vim-test.log for 'ALL DONE' for a successful test"
+	# Fix permissions for install
+	chown -Rv root:root .
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Make a symlink for vi to vim
+	ln -sv vim /usr/bin/vi
+	for file in /usr/share/man/{,*/}man1/vim.1; do
+		ln -sv vim.1 $(dirname $file)/vi.1
+	done
+
+	# Install documentation at the consistent spot
+	ln -sv ../vim/vim82/doc /usr/share/doc/vim-8.2.0190
+
+	# Create default vimrc
+	cat > /etc/vimrc << "EOF"
+" Default /etc/vimrc
+
+" Set defaults before customizing
+source $VIMRUNTIME/defaults.vim
+let skip_defaults_vim=1
+
+set nocompatible	" disable old vi compatibility
+syntax on			" enable syntax highlighting
+EOF
+}
+
+pretty_make					\
+	"vim"					\
+	"vim-8.2.0190.tar.gz"	\
+	"make_vim"
+
+# }}}
+
+# Procps-ng {{{
+
+make_procps_ng()
+{
+	./configure										\
+		--prefix=/usr								\
+		--exec-prefix=								\
+		--libdir=/usr/lib							\
+		--docdir=/usr/share/doc/procps-ng-3.3.15	\
+		--disable-static							\
+		--disable-kill
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# Fix some tests for use with LFS
+	sed -i -r 's|(pmap_initname)\\\$|\1|' testsuite/pmap.test/pmap.exp
+	sed -i '/set tty/d' testsuite/pkill.test.pkill.exp
+	rm testsuite/pgrep.test/pgrep.exp
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Move essential libraries for FHS reasons and in case /usr isn't mounted
+	mv -v /usr/lib/libprocps.so.* /lib
+	ln -sfv ../../lib/$(readlink /usr/lib/libprocps.so) /usr/lib/libprocps.so
+}
+
+pretty_make						\
+	"procps_ng"					\
+	"procps-ng-3.3.15.tar.xz"	\
+	"make_procps_ng"
+
+# }}}
+
+# Util-linux {{{
+
+make_util_linux()
+{
+	# FHS recommends using /var/lib/hwclock/adjtime instead of /etc/adjtime
+	mkdir -pv /var/lib/hwclock
+
+	./configure										\
+		ADJTIME_PATH=/var/lib/hwclock/adjtime		\
+		--docdir=/usr/share/doc/util-linux-2.35.1	\
+		--disable-chfn-chsh							\
+		--disable-login								\
+		--disable-nologin							\
+		--disable-su								\
+		--disable-setpriv							\
+		--disable-runuser							\
+		--disable-pylibmount						\
+		--disable-static							\
+		--without-python							\
+		--without-systemd							\
+		--without-systemdsystemunitdir
+	make $MAKEFLAGS
+
+	pretty_test_start
+	# Make sure to run the test suite as a non-root user
+	chown -Rv nobody .
+	su nobody -s /bin/bash -c "PATH=$PATH make -k check"
+	chown -Rv root:root .
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make						\
+	"util-linux"				\
+	"util-linux-2.35.1.tar.xz"	\
+	"make_util_linux"
+
+# }}}
+
+# E2fsprogs {{{
+
+make_e2fsprogs()
+{
+	# Recommended to build in a sub-directory
+	mkdir -v build && cd build
+
+	./configure					\
+		--prefix=/usr			\
+		--bindir=/bin			\
+		--with-root-prefix=""	\
+		--enable-elf-shlibs		\
+		--disable-libblkid		\
+		--disable-libuuid		\
+		--disable-uuidd			\
+		--disable-fsck
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Make installed static libraries writable so we can remove debugging
+	# symbols later
+	chmod -v u+w /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+
+	# Gunzip the info file and add it to the info dir
+	gunzip -v /usr/share/info/libext2fs.info.gz
+	install-info --dir-file/usr/share/info/dir /usr/share/info/libext2fs.info
+
+	# Create and install additional documentation
+	makeinfo -o doc/com_err.info ../lib/et/com_err.texinfo
+	install -v -m644 doc/com_err.info /usr/share/info
+	install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+}
+
+pretty_make						\
+	"e2fsprogs"					\
+	"e2fsprogs-1.45.5.tar.gz"	\
+	"make_e2fsprogs"
+
+# }}}
+
+# Sysklogd {{{
+
+make_sysklogd()
+{
+	# Fix problems that cause a segfault under some conditions in klogd
+	# Also fix obsolete program construct
+	sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+	sed -i 's/union wait/int/' syslogd.c
+
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make BINDIR=/sbin install
+
+	# Configure Sysklogd
+	cat > /etc/syslog.conf << "EOF"
+# Begin /etc/syslog.conf
+
+auth,authpriv.* -/var/log/auth.log
+*.*;auth,authpriv.none -/var/log/sys.log
+daemon.* -/var/log/daemon.log
+kern.* -/var/log/kern.log
+mail.* -/var/log/mail.log
+user.* -/var/log/user.log
+*.emerg *
+
+# End of /etc/syslog.conf
+EOF
+}
+
+pretty_make					\
+	"sysklogd"				\
+	"sysklogd-1.5.1.tar.gz"	\
+	"make_sysklogd"
+
+# }}}
+
+# Sysvinit {{{
+
+make_sysvinit()
+{
+	# Big patch that removes several already installed programs, clarifies a
+	# message, and fixes a compiler warning
+	patch -Np1 -i ../sysvinit-2.96-consolidated-1.patch
+
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"sysvinit"				\
+	"sysvinit-2.96.tar.xz"	\
+	"make_sysvinit"
+
+# }}}
+
+# Eudev {{{
+
+make_eudev()
+{
+	./configure					\
+		--prefix=/usr			\
+		--bindir=/sbin			\
+		--libdir=/usr/lib		\
+		--sysconfdir=/etc		\
+		--libexecdir=/lib		\
+		--with-rootprefix=		\
+		--with-rootlibdir=/lib	\
+		--enable-manpages		\
+		--disable-static
+	make $MAKEFLAGS
+
+	# These directories are needed for the tests, but will also be a part of
+	# the installation
+	mkdir -pv /lib/udev/rules.d
+	mkdir -pv /etc/udev/rules.d
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+
+	# Install some custom rules and support files useful in an LFS environment
+	tar -xvf ../udev-lfs-20171102.tar.xz
+	make -f udev-lfs-20171102/Makefile.lfs install
+
+	# Configure eudev
+	# This command will create the initial udev database for the hardware
+	# devices. Each time the hardware information changes, this command will
+	# need to be run again.
+	udevadm hwdb --update
+}
+
+pretty_make					\
+	"eudev"					\
+	"eudev-3.2.9.tar.gz"	\
+	"make_eudev"
+
+# }}}
+
+exit
+
+# Template {{{
+
+make_template()
+{
+	./configure				\
+		--prefix=/usr		\
+	make $MAKEFLAGS
+
+	pretty_test_start
+	make check
+	pretty_test_end
+
+	pretty_log "Installing"
+	make install
+}
+
+pretty_make					\
+	"template"				\
+	"tarball"		\
+	"make_template"
+
+# }}}
+
+# vim: foldmethod=marker foldmarker={{{,}}}
