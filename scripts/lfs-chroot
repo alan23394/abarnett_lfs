@@ -17,6 +17,10 @@ source resources/config
 
 [ -z "$LFS" ] && echo "Must export \$LFS as the location to chroot into" && exit
 
+# Sometimes I use urxvt, which has problems here. This makes it think we're in
+# xterm.
+TERM=xterm
+
 chroot "$LFS" /tools/bin/env -i	\
 	HOME=/root					\
 	TERM="$TERM"				\
