@@ -964,7 +964,7 @@ make_ncurses()
 		--without-debug			\
 		--without-normal		\
 		--enable-pc-files		\
-		--enable-widec			\
+		--enable-widec
 	make $MAKEFLAGS
 
 	# The test suite can't be run until the package is installed
@@ -1508,7 +1508,7 @@ make_kmod()
 		--sysconfdir=/etc		\
 		--with-rootlibdir=/lib	\
 		--with-xz				\
-		--with-zlib				\
+		--with-zlib
 	make $MAKEFLAGS
 
 	pretty_log "Installing"
@@ -1829,7 +1829,7 @@ make_gawk()
 	sed -i 's/extras//' Makefile.in
 
 	./configure				\
-		--prefix=/usr		\
+		--prefix=/usr
 	make $MAKEFLAGS
 
 	pretty_test_start
@@ -2501,7 +2501,7 @@ exit
 make_template()
 {
 	./configure				\
-		--prefix=/usr		\
+		--prefix=/usr
 	make $MAKEFLAGS
 
 	pretty_test_start
