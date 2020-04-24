@@ -1565,6 +1565,7 @@ make_libelf()
 
 	pretty_test_start
 	make check
+	# run-elclassify.sh is known to fail
 	pretty_test_end
 
 	pretty_log "Installing"
@@ -1592,6 +1593,7 @@ make_libffi()
 
 	pretty_test_start
 	make check
+	# six tests related to test-callback.c are known to fail
 	pretty_test_end
 
 	pretty_log "Installing"
