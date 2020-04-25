@@ -1517,8 +1517,9 @@ make_kmod()
 	# Create symlinks for compatibility with Module-Init-Tools (the package
 	# that previously handled the kernel modules)
 	for target in depmod insmod lsmod modinfo modprobe rmmod; do
-		ln -sfv ../bin/knod /sbin/$target
+		ln -sfv ../bin/kmod /sbin/$target
 	done
+	ln -sfv kmod /bin/lsmod
 }
 
 pretty_make					\
