@@ -13,6 +13,7 @@
 # **************************************************************************** #
 
 # This uses the chroot compiler to install the lfs-bootscripts package
+# Run it after cleaning up the new system
 
 source ./chroot_compile
 

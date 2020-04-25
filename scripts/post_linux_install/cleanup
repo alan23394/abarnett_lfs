@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Run strip_unneeded before this if you'd like debugging symbols removed
+
 # Clean up extra files from the tests
 rm -rf /tmp/*
 

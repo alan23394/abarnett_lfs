@@ -8,12 +8,9 @@
 #    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2019/04/10 03:14:07 by marvin            #+#    #+#              #
-#    Updated: 2020/04/25 05:50:09 by marvin           ###   ########.fr        #
+#    Updated: 2019/04/10 03:14:07 by marvin           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
-
-# This chroot should be used when the tools have all been installed in the
-# final system and the /tools directory is (optionally) removed.
 
 # This should contain the LFS variable
 source resources/config
@@ -24,9 +21,14 @@ source resources/config
 # xterm.
 TERM=xterm
 
-chroot "$LFS" /usr/bin/env -i	\
+chroot "$LFS" /tools/bin/env -i	\
 	HOME=/root					\
 	TERM="$TERM"				\
-	PATH=/bin:/usr/bin:/sbin:/usr/sbin	\
+	PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin	\
 	PS1="\[\e[1;36m\]\u\[\e[1;37m\]:\[\e[1;32m\]\w \[\e[1;31m\](lfs chroot)\n\[\e[1;37m\] \$ \[\e[m\]"	\
-	/bin/bash --login
+	/tools/bin/bash --login +h
+
+# The +h turns off bash hashing functions, so it doesn't save the locations of
+# binaries and will search the path for each one again. This is to use new
+# tools once ones are installed, instead of using /tools/bin (also why that's
+# at the end of the path).

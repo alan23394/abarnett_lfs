@@ -1,7 +1,8 @@
-#!/bin/sh
+#!/tools/bin/bash
 
 # This script will remove all the debugging symbols in binaries and libraries
 # in the finished new system.
+# Make sure you run it before cleanup! It needs /tools/bin/bash to work.
 
 # First, we place the debugging symbols for the selected libraries in separate
 # files. This debugging information is needed if running regression tests that
@@ -31,12 +32,10 @@ done
 unset LIB save_lib save_usrlib
 
 
-# If you're doing this next part interactively, the book wants you to exec the
+# If you're doing this next part interactively, the book wants you to exec
 # /tools/bin/bash so to not be using the new system's version while it gets
-# stripped. I have no idea how that's going to work with this running script,
-# but I don't plan on using this script as I want the debugging symbols so I'm
-# not going to worry about it. In all actuality it will probably be a problem
-# because the shebang calls /bin/sh, which is /bin/bash.
+# stripped. I used /tools/bin/bash as the shebang for this script to accomplish
+# this.
 
 
 # Strip the binaries and libraries
