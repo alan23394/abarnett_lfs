@@ -1621,6 +1621,7 @@ make_openssl()
 
 	pretty_test_start
 	make test
+	# one test in 20-test_enc.t is known to fail
 	pretty_test_end
 
 	pretty_log "Installing"
@@ -1749,11 +1750,12 @@ make_coreutils()
 	# Pass in the path to make sure the user has /tools/bin
 	su nobody -s /bin/bash \
 		-c "PATH=$PATH make RUN_EXPENSIVE_TESTS=yes check"
+	# tty.sh is known to fail
 	# Remove the temporary group
 	sed -i '/dummy/d' /etc/group
+	pretty_test_end
 	# Put permissions back
 	chown -Rv root:root .
-	pretty_test_end
 
 	pretty_log "Installing"
 	make install
@@ -1863,6 +1865,7 @@ make_findutils()
 
 	pretty_test_start
 	make check
+	# tests known to fail: sv-bug-54171.old-O3, sv-bug-54171.new-O3
 	pretty_test_end
 
 	pretty_log "Installing"
@@ -1956,6 +1959,7 @@ make_gzip()
 
 	pretty_test_start
 	make check
+	# help-version and zmore are known to fail
 	pretty_test_end
 
 	pretty_log "Installing"
@@ -2332,6 +2336,7 @@ make_util_linux()
 	# Make sure to run the test suite as a non-root user
 	chown -Rv nobody .
 	su nobody -s /bin/bash -c "PATH=$PATH make -k check"
+	# mountpoint: [01] failed for me, I'm not yet sure if that's okay
 	chown -Rv root:root .
 	pretty_test_end
 
@@ -2473,6 +2478,7 @@ make_eudev()
 
 	pretty_test_start
 	make check
+	# udev-test.pl fails for me, other people say it's fine.
 	pretty_test_end
 
 	pretty_log "Installing"
