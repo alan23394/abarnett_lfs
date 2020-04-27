@@ -1,0 +1,77 @@
+#!/bin/sh
+
+# Create inittab file, which describes how the system boots
+
+cat > /etc/inittab << "EOF"
+# Init configuration
+# See init(8) and inittab(5)
+
+id:3:initdefault:
+
+si::sysinit:/etc/rc.d/init.d/rc S
+
+l0:0:wait:/etc/rc.d/init.d/rc 0
+l1:S1:wait:/etc/rc.d/init.d/rc 1
+l2:2:wait:/etc/rc.d/init.d/rc 2
+l3:3:wait:/etc/rc.d/init.d/rc 3
+l4:4:wait:/etc/rc.d/init.d/rc 4
+l5:5:wait:/etc/rc.d/init.d/rc 5
+l6:6:wait:/etc/rc.d/init.d/rc 6
+
+ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
+
+su:S016:once:/sbin/sulogin
+
+1:2345:respawn:/sbin/agetty --noclear tty1 9600
+2:2345:respawn:/sbin/agetty tty2 9600
+3:2345:respawn:/sbin/agetty tty3 9600
+4:2345:respawn:/sbin/agetty tty4 9600
+5:2345:respawn:/sbin/agetty tty5 9600
+6:2345:respawn:/sbin/agetty tty6 9600
+EOF
+echo "Created /etc/inittab"
+
+# Create the system clock config file, which tells us what to do with the RTC
+
+cat > /etc/sysconfig/clock << "EOF"
+# File to configure how the time is set from the RTC
+# See the /etc/init.d/setclock file and hwclock(8) for more info
+# I store UTC in the hardware clock, and then it is adjusted by my timezone
+UTC=1
+
+# These parameters are passed to hwclock
+CLOCKPARAMS=
+EOF
+echo "Created /etc/sysconfig/clock"
+
+# Create the system console config, which sets the font and keymap as well as
+# log levels from the kernel
+
+cat > /etc/sysconfig/console << "EOF"
+# Default console configuration file
+# See loadkeys(8) and setfont(8)
+# Look in /usr/share/keymaps and /usr/share/consolefonts
+# Also see /etc/init.d/console
+
+# Log level for kernel messages sent to the console
+#LOGLEVEL=7
+# Keymap argument to the loadkeys program
+#KEYMAP=
+# Specify arguments to the second call to loadkeys. Useful for small changes to
+# a loaded keymap
+#KEYMAP_CORRECTIONS=
+# Font argument to the setfont program
+#FONT=
+# Set this to 1, yes, or true to put the console in UTF-8 mode
+# Useful in UTF-8 based locales, harmful otherwise
+# I'm not sure if lfs has great support for unicode
+#UNICODE=0
+# This is used if your keyboard layout doesn't have a stock unicode keymap in
+# the kbd package. It will convert a non-UTF-8 keymap to a UTF-8 one on the
+# fly.
+#LEGACY_CHARSET=
+EOF
+echo "Created /etc/sysconfig/console"
+
+echo "If you want to create files at boot, see /etc/sysconfig/createfiles"
+echo "Also see /etc/sysconfig/rc.site. It has basically all the options"

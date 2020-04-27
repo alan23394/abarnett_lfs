@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Creates my starting wifi script, to be filled in with correct values later
+
+cat > /etc/sysconfig/ifconfig.wlan0 << "EOF"
+# Starting static network config for a wifi interface
+ONBOOT=no
+IFACE=wlan0
+SERVICE=ipv4-static
+IP=
+GATEWAY=
+PREFIX=
+BROADCAST=
+EOF
+echo "Created /etc/sysconfig/ifconfig.wlan0"
+
+# Creates the resolv.conf file for DNS resolution
+
+cat > /etc/resolv.conf << "EOF"
+# DNS configuration file. See resolv.conf(5) for more.
+# Right now it's configured to use Cloudflare's public DNS.
+nameserver 1.1.1.1
+nameserver 1.0.0.1
+EOF
+echo "Created /etc/resolv.conf"
+
+# Set hostname
+
+echo "lfs" > /etc/hostname
+echo "Created /etc/hostname"
+
+# Create the hosts file
+# This was already done for perl during the main system, so this overwrites it
+
+cat > /etc/hosts << "EOF"
+# Local DNS overrides
+# See hosts(5) for details
+
+# <ip-address>	<fqdn>			<hostname>
+127.0.0.1		localhost
+127.0.1.1		lfs.home.com	lfs
+EOF
+echo "Created /etc/hosts"

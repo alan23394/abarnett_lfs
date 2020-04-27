@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Run this after cleaning up and chrooting into your new system.
+# Actually maybe wait until after the first new boot to do it
+# It won't show my wifi card if I run it from the host in chroot
+# This creates the initial udev rules for your hardware.
+bash /lib/udev/init-net-rules.sh
+
+printf "Check /etc/udev/rules.d/70-persistent-net.rules\n"

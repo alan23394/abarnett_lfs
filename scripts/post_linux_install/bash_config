@@ -1,0 +1,80 @@
+#!/bin/sh
+
+# To determine your locale, type
+#locale -a
+# The first part is your language, the second is your country code.
+# The file extension for these is the character encoding for your locale. This
+# list has them printed in their lowercase form, but using that can cause
+# problems later with Xlib and other things.
+# To determine the proper suffix for your locale (things like .utf8 are
+# aliases), type
+#LC_ALL=<locale name> locale charmap
+# It will give you the proper suffix.
+# Also test your locale with these other commands
+#LC_ALL=<locale name> locale language
+#LC_ALL=<locale name> locale int_curr_symbol
+#LC_ALL=<locale name> locale int_prefix
+# They should print your language, currency, and phone country code.
+# If your locale isn't found, then look at localedef(1) or pick something else.
+
+# Create /etc/profile for shell initialization with the locale
+cat > /etc/profile << "EOF"
+# Shell initialization file
+
+# Set language
+export LANG=en_US
+EOF
+
+# Create the /etc/inputrc file, for readline config
+# For more info, see `info bash` under "readline init file", or `info readline`
+cat > /etc/inputrc << "EOF"
+# Begin /etc/inputrc
+# Modified by Chris Lynn <roryo@roryo.dynup.net>
+
+# Allow the command prompt to wrap to the next line
+set horizontal-scroll-mode Off
+
+# Enable 8bit input
+set meta-flag On
+set input-meta On
+
+# Turns off 8th bit stripping
+set convert-meta Off
+
+# Keep the 8th bit for display
+set output-meta On
+
+# none, visible or audible
+set bell-style none
+
+# All of the following map the escape sequence of the value
+# contained in the 1st argument to the readline specific functions
+"\eOd": backward-word
+"\eOc": forward-word
+
+# for linux console
+"\e[1~": beginning-of-line
+"\e[4~": end-of-line
+"\e[5~": beginning-of-history
+"\e[6~": end-of-history
+"\e[3~": delete-char
+"\e[2~": quoted-insert
+
+# for xterm
+"\eOH": beginning-of-line
+"\eOF": end-of-line
+
+# for Konsole
+"\e[H": beginning-of-line
+"\e[F": end-of-line
+
+# End /etc/inputrc
+EOF
+
+# Create /etc/shells, which lists the available login shells for users
+cat > /etc/shells << "EOF"
+# Available login shells
+
+/bin/sh
+/bin/bash
+EOF
