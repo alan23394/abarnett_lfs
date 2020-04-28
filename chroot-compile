@@ -20,6 +20,8 @@
 # the package name. Then it executes the build function. It prints info about
 # the current stage. It will remove the build directory after running the
 # function, so be sure to include the make install part.
+# By default, it will remove the build directory when it's done. If you don't
+# want that, then pass an additional first argument as --no-rm
 # It logs all output from the stages in a log file located in the LOG_DIR
 # directory.
 
@@ -47,6 +49,14 @@ COLOR_OFF="\e[m"
 
 pretty_make()
 {
+	DO_RM=1
+	case "$1" in
+		--no-rm)
+			DO_RM=0
+			shift
+			;;
+	esac
+
 	# Label the positional parameters
 	PKG_NAME="$1"
 	TARBALL="$SOURCE_DIR/$2"
@@ -91,9 +101,13 @@ pretty_make()
 	# Leave build directory
 	popd > /dev/null
 
-	printf "${COLOR_CLEAN}Cleaning ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
-	rm -rf "$BUILD_DIR"
-	printf "${COLOR_CLEAN}done!${COLOR_OFF}\n"
+	if [ "$DO_RM" = "1" ]; then
+		printf "${COLOR_CLEAN}Cleaning ${COLOR_NAME}${PKG_NAME}${COLOR_OFF}..."
+		rm -rf "$BUILD_DIR"
+		printf "${COLOR_CLEAN}done!${COLOR_OFF}\n"
+	else
+		printf "Not cleaning.\n"
+	fi
 }
 
 # This function is for printing messages to your log file
