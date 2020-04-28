@@ -1,0 +1,79 @@
+#!/bin/sh
+
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    install_kernel                                     :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: marvin <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2020/04/26 12:20:56 by marvin            #+#    #+#              #
+#    Updated: 2020/04/26 23:45:38 by marvin           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+if [ ! -f "/sources/lfs_kernel.config" ]; then
+	echo "Go extract the kernel and do these things:"
+	echo "  make mrproper"
+	echo "  make defconfig"
+	echo "That cleans the kernel directory and creates a default config file."
+	echo "Then go read the readme, and run make menuconfig."
+	echo "Change these options: (e=enable, d=disable)"
+	echo "d Device Drivers -> Generic Driver Options -> Support for a uevent helper"
+	echo "e Device Drivers -> Generic Driver Options -> Maintain devtmpfs"
+	echo "e Kernel hacking -> Choose kernel unwinder (frame pointer unwinder)"
+	echo "Once you have your config, copy it to /sources/lfs_kernel.config"
+	echo "Then run this again."
+	exit
+fi
+
+# This uses the chroot compiler to install the linux kernel
+# Run it after setting up your shell and init system
+
+source ./chroot-compile
+
+make_linux_kernel()
+{
+	# Prepare kernel for compilation
+	make mrproper
+
+	# Copy in config file
+	cp -v ../lfs_kernel.config .config
+
+	# Compile kernel
+	make $MAKEFLAGS
+
+	pretty_log "Installing"
+	make modules_install
+	# Copy required files into /boot
+	case "$(uname -m)" in
+		x86_64)
+			cp -v arch/x86_64/boot/bzImage /boot/vmlinuz-5.5.3-lfs-9.1
+			;;
+	esac
+	cp -v System.map /boot/System.map-5.5.3
+	cp -v ../lfs_kernel.config /boot/config-5.5.3
+	# Install documentation
+	install -d /usr/share/doc/linux-5.5.3
+	cp -rv Documentation/* /usr/share/doc/linux-5.5.3
+
+	# Save the kernel build dir for later
+	pretty_log "Chowning, not doing it verbose because holy cow"
+	chown -R root:root .
+	cd ..
+	mv -v build linux-5.5.3
+
+	# Configure linux module load order
+	install -v -m755 -d /etc/modprobe.d
+	cat > /etc/modprobe.d/usb.conf << "EOF"
+# USB rules for the kernel module loader
+
+install ohci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i ohci_hcd
+install uhci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i uhci_hcd
+EOF
+}
+
+pretty_make							\
+	"linux_kernel"					\
+	"linux-5.5.3.tar.xz"			\
+	make_linux_kernel

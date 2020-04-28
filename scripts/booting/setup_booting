@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Create the /etc/fstab file
+# This file is used by some programs to tell where file systems are mounted by
+# default, in which order, and which must be checked for integrity errors
+# prior to mounting.
+# See fstab(5).
+cat > /etc/fstab << "EOF"
+# This file is used to tell the operating system what partitions are mounted
+# and where.
+
+# file system	mount point		type		options		dump	fsck order
+/dev/sda4		/				ext4		defaults	1		1
+/dev/sda3		swap			swap		pri=1		0		0
+proc			/proc			proc		nosuid,noexec,nodev	0	0
+sysfs			/sys			sysfs		nosuid,noexec,nodev	0	0
+devpts			/dev/pts		devpts		gid=5,mode=620		0	0
+tmpfs			/run			tmpfs		defaults	0		0
+devtmpfs		/dev			devtmpfs	mode=0755,nosuid	0	0
+EOF
+echo "Created /etc/fstab"

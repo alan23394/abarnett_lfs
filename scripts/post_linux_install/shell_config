@@ -24,6 +24,7 @@ cat > /etc/profile << "EOF"
 # Set language
 export LANG=en_US
 EOF
+echo "Created /etc/profile"
 
 # Create the /etc/inputrc file, for readline config
 # For more info, see `info bash` under "readline init file", or `info readline`
@@ -70,6 +71,7 @@ set bell-style none
 
 # End /etc/inputrc
 EOF
+echo "Created /etc/inputrc"
 
 # Create /etc/shells, which lists the available login shells for users
 cat > /etc/shells << "EOF"
@@ -78,3 +80,4 @@ cat > /etc/shells << "EOF"
 /bin/sh
 /bin/bash
 EOF
+echo "Created /etc/shells"

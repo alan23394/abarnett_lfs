@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Create release file for reference later
+echo "9.1" > /etc/lfs-release
+echo "Created /etc/lfs-release"
+
+# Two other files will be referenced by other programs for distro information
+
+# Create file for compliance with LSB
+cat > /etc/lsb-release << "EOF"
+DISTRIB_ID="Linux From Scratch"
+DISTRIB_RELEASE="9.1"
+DISTRIB_CODENAME="42 Edition"
+DISTRIB_DESCRIPTION="Linux From Scratch"
+EOF
+
+# Create an os-release file for systemd and some graphical desktop environments
+cat > /etc/os-release << "EOF"
+NAME="Linux From Scratch"
+VERSION="9.1"
+ID=lfs
+PRETTY_NAME="Linux From Scratch 9.1"
+VERSION_CODENAME="42 Edition"
+EOF

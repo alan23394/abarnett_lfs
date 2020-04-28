@@ -1,0 +1,47 @@
+#!/bin/sh
+
+COLOR_RED="\e[1;31m"
+COLOR_NORM="\e[m"
+
+printf "${COLOR_RED}Only continue if you're running in chroot!${COLOR_NORM}\n"
+printf "This will copy files into your /boot partition!\n"
+printf "This will actually attempt to install grub on the drive.\n"
+printf "Which drive do you want to install it on?\n"
+printf "Enter the name of the lfs drive (/dev/sdx, ex. /dev/sdb): "
+read DRIVE
+lsblk | grep "${DRIVE##*/}"
+printf "$DRIVE. Are you sure? [y/N] "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'n' ] || [ "$CONTINUE" != 'y' ]; then
+	echo "Okay, quitting."
+	exit
+fi
+printf "Are you double sure? [y/N] "
+read CONTINUE
+if [ -z "$CONTINUE" ] || [ "$CONTINUE" = 'n' ] || [ "$CONTINUE" != 'y' ]; then
+	echo "Okay, quitting."
+	exit
+fi
+
+[ -f "/boot/grub/grub.cfg" ] \
+	&& printf "You already have /boot/grub/grub.cfg! What are you doing?!\n" \
+	&& exit
+
+printf "Here we go...\n"
+
+grub-install "$DRIVE"
+
+printf "Making /boot/grub/grub.cfg...\n"
+cat > /boot/grub/grub.cfg << "EOF"
+# Grub configuration file
+
+set default=0
+set timeout=3
+
+insmod ext2
+set root=(hd1,4)
+
+menuentry "GNU/Linux, Linux 5.5.3-lfs-9.1" {
+	linux	/boot/vmlinux-5.5.3-lfs-9.1 root=/dev/sdb4 ro
+}
+EOF
